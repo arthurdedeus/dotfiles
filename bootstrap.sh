@@ -2,6 +2,9 @@
 
 set -e
 
+echo "Bootstrapping..."
+
+
 BASE_DIR=$(dirname "${0}")
 BIN_DIR="${HOME}/bin"
 FONTS_DIR="${HOME}/Library/Fonts"
@@ -9,34 +12,40 @@ NVIM_CONFIG_DIR="${HOME}/.config/nvim"
 
 source "${BASE_DIR}/utils.sh"
 
+info "Utils sourced"
+
 BREW_PACKAGES=(
-  certifi,
-  curl,
-  gdal,
-  git,
-  httpie,
-  openssl,
-  orbstack,
-  postgis,
-  postgresql,
-  pyenv,
-  python-certifi,
-  python-packaging,
-  sqlite,
-  tree-sitter,
-  yarn,
-  zsh,
+  certifi
+  coreutils
+  curl
+  gdal
+  gh
+  git
+  httpie
+  node
+  openssl
+  orbstack
+  postgis
+  postgresql
+  pyenv
+  python-certifi
+  python-packaging
+  sqlite
+  tree-sitter
+  wget
+  yarn
+  zsh
 )
 
 SYMLINKS=(
-  "${BASE_DIR}/git/gitattributes" "${HOME}/.gitattributes"
-  "${BASE_DIR}/git/gitconfig" "${HOME}/.gitconfig"
-  "${BASE_DIR}/git/gitignore" "${HOME}/.gitignore"
-  "${BASE_DIR}/nvim" "${HOME}/.config/nvim"
-  "${BASE_DIR}/zsh/zshrc" "${HOME}/.zshrc"
+  # "${BASE_DIR}/git/gitattributes" "${HOME}/.gitattributes"
+  # "${BASE_DIR}/git/gitconfig" "${HOME}/.gitconfig"
+  # "${BASE_DIR}/git/gitignore" "${HOME}/.gitignore"
+  # "${BASE_DIR}/nvim" "${HOME}/.config/nvim"
+  # "${BASE_DIR}/zsh/zshrc" "${HOME}/.zshrc"
 )
 
-[ -d "${BIN_DIR}" ] || exit 1
+[ -d "${BASE_DIR}" ] || exit 1
 mkdir -p "${BIN_DIR}"
 mkdir -p "${FONTS_DIR}"
 
@@ -56,8 +65,8 @@ function _install_brew_packages {
 
 function _create_symlinks {
   info "Creating symlinks"
-  for PATH in "${SYMLINKS[@]}"; do
-    create_symlink ${PATH}
+  for FILE in "${SYMLINKS[@]}"; do
+    create_symlink ${FILE}
   done
 }
 

@@ -1,5 +1,11 @@
 #!/bin/bash
 
+function debug {
+  set +x
+  echo "~ ${1} ~"
+  set -x
+}
+
 function info {
   set +x
   echo

@@ -29,6 +29,6 @@ function bootstrap() { (
   cd "${DOTFILES_DIR}"
   git pull origin main || true
   bash "${DOTFILES_DIR}/bootstrap.sh" "${@}" || return 1 
-}
+); }
 
 export _DEFAULTS_SOURCED="1"
