@@ -7,6 +7,8 @@ BIN_DIR="${HOME}/bin"
 FONTS_DIR="${HOME}/Library/Fonts"
 NVIM_CONFIG_DIR="${HOME}/.config/nvim"
 
+source "${BASE_DIR}/utils.sh"
+
 BREW_PACKAGES=(
   certifi,
   curl,
