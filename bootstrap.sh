@@ -24,6 +24,7 @@ BREW_PACKAGES=(
   httpie
   node
   openssl
+  openssl@1.1
   orbstack
   postgis
   postgresql
