@@ -21,6 +21,7 @@ BREW_PACKAGES=(
   gdal
   gh
   git
+  gitui
   httpie
   node
   openssl
