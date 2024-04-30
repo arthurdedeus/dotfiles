@@ -43,7 +43,7 @@ SYMLINKS=(
   # "${BASE_DIR}/git/gitattributes" "${HOME}/.gitattributes"
   # "${BASE_DIR}/git/gitconfig" "${HOME}/.gitconfig"
   # "${BASE_DIR}/git/gitignore" "${HOME}/.gitignore"
-  # "${BASE_DIR}/nvim" "${HOME}/.config/nvim"
+  "${BASE_DIR}/nvim ${HOME}/.config/nvim"
   # "${BASE_DIR}/zsh/zshrc" "${HOME}/.zshrc"
 )
 
