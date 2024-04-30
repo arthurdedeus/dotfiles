@@ -45,5 +45,11 @@ require("lazy").setup({
         require("nvim-tree").setup {}
     end,
   },
+  {
+    "folke/todo-comments.nvim",
+    dependencies = { "nvim-lua/plenary.nvim" },
+    opts = {},
+  },
+  "f-person/git-blame.nvim",
 })
 

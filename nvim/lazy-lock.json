@@ -3,6 +3,7 @@
   "cmp-cmdline": { "branch": "main", "commit": "d250c63aa13ead745e3a40f61fdd3470efde3923" },
   "cmp-nvim-lsp": { "branch": "main", "commit": "5af77f54de1b16c34b23cba810150689a3a90312" },
   "cmp-path": { "branch": "main", "commit": "91ff86cd9c29299a64f968ebb45846c485725f23" },
+  "git-blame.nvim": { "branch": "master", "commit": "ad1d1365c9189d89797fe8d559677d5f55dc2830" },
   "lazy.nvim": { "branch": "main", "commit": "3f13f080434ac942b150679223d54f5ca91e0d52" },
   "neoconf.nvim": { "branch": "main", "commit": "ba3503e246ea687732e51f7f9878e653e2e2039b" },
   "neodev.nvim": { "branch": "main", "commit": "ce9a2e8eaba5649b553529c5498acb43a6c317cd" },
@@ -14,5 +15,6 @@
   "plenary.nvim": { "branch": "master", "commit": "08e301982b9a057110ede7a735dd1b5285eb341f" },
   "rose-pine": { "branch": "main", "commit": "17b466e79479758b332a3cac12544a3ad2be6241" },
   "telescope.nvim": { "branch": "master", "commit": "6312868392331c9c0f22725041f1ec2bef57c751" },
+  "todo-comments.nvim": { "branch": "main", "commit": "a7e39ae9e74f2c8c6dc4eea6d40c3971ae84752d" },
   "which-key.nvim": { "branch": "main", "commit": "4433e5ec9a507e5097571ed55c02ea9658fb268a" }
 }
