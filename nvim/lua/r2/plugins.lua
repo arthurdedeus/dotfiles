@@ -11,6 +11,7 @@ if not (vim.uv or vim.loop).fs_stat(lazypath) then
 end
 vim.opt.rtp:prepend(lazypath)
 
+
 require("lazy").setup({
   "folke/which-key.nvim",
   { "folke/neoconf.nvim", cmd = "Neoconf" },
@@ -20,19 +21,9 @@ require("lazy").setup({
       dependencies = { 'nvim-lua/plenary.nvim' }
   },
   { "rose-pine/neovim", name = "rose-pine" },
-  { 
-      "nvim-treesitter/nvim-treesitter",
-      build = ":TSUpdate",
-  },
   {
-      "hrsh7th/nvim-cmp",
-      dependencies = {
-          "neovim/nvim-lspconfig",
-          "hrsh7th/cmp-nvim-lsp",
-          "hrsh7th/cmp-buffer",
-          "hrsh7th/cmp-path",
-          "hrsh7th/cmp-cmdline",
-  	}
+       "nvim-treesitter/nvim-treesitter",
+      build = ":TSUpdate",
   },
   {
     "nvim-tree/nvim-tree.lua",
@@ -50,6 +41,34 @@ require("lazy").setup({
     dependencies = { "nvim-lua/plenary.nvim" },
     opts = {},
   },
-  "f-person/git-blame.nvim",
+    "f-person/git-blame.nvim",
+    {'VonHeikemen/lsp-zero.nvim', branch = 'v3.x'},
+    {'neovim/nvim-lspconfig'},
+    {'hrsh7th/cmp-nvim-lsp'},
+    {
+        "hrsh7th/nvim-cmp",
+        dependencies = {
+            "hrsh7th/cmp-buffer",
+            "hrsh7th/cmp-path",
+            "hrsh7th/cmp-cmdline",
+  	    }
+    },
+    {'L3MON4D3/LuaSnip'},
+    {"SmiteshP/nvim-navic"},
+    {
+        "williamboman/mason.nvim",
+        "williamboman/mason-lspconfig.nvim",
+    },
+    {
+        'windwp/nvim-autopairs',
+        event = "InsertEnter",
+        config = true
+    },
+    {
+        "rmagatti/goto-preview",
+        config = function()
+            require("goto-preview").setup({})
+        end,
+    }
 })
 
