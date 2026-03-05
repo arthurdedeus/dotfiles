@@ -109,6 +109,7 @@ alias restart-website="pnpm clean && mkdir .cache && pnpm install && pnpm start"
 alias init-bt="npx @agentdeskai/browser-tools-server@1.2.0"
 alias hogli="bin/hogli"
 alias checkout="git checkout --ignore-other-worktrees"
+alias dotfiles="git -C ~/.dotfiles"
 
 
 
