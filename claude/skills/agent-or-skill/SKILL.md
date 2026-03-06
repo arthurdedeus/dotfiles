@@ -37,3 +37,9 @@ After hearing the use case:
 1. Recommend **skill** or **agent** with a one-sentence reason
 2. If the answer isn't clear-cut, explain the tradeoff
 3. Suggest a name and briefly outline what the file should contain
+
+## After completion
+
+Assess how this skill performed:
+- If the user had to provide significant guidance, corrections, or workarounds to get the task done, recommend running `/improve-skill` to capture those learnings. Explain briefly what could be improved.
+- If the skill ran smoothly with minimal intervention, offer it as an option: "Would you like to run `/improve-skill` to refine this skill based on this session?"

@@ -331,3 +331,9 @@ When creating snapshot tests, ensure:
 - [ ] Props use TypeScript types for documentation
 - [ ] Complex components have multiple focused stories
 - [ ] Loading and error states are tested if applicable
+
+## After completion
+
+Assess how this skill performed:
+- If the user had to provide significant guidance, corrections, or workarounds to get the task done, recommend running `/improve-skill` to capture those learnings. Explain briefly what could be improved.
+- If the skill ran smoothly with minimal intervention, offer it as an option: "Would you like to run `/improve-skill` to refine this skill based on this session?"

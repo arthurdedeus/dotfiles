@@ -67,3 +67,9 @@ _Describe testing approach: automated tests added/modified, manual testing steps
 - Do NOT include the changelog section or coding conventions reminder - those are already in the template
 - Output ONLY the markdown content (Problem, Changes, Test sections), ready to paste into a PR
 - CRITICAL: Output the final PR description inside a fenced code block (triple backticks with `markdown` language tag) so the user sees raw markdown they can copy-paste directly. Do NOT render it.
+
+## After completion
+
+Assess how this skill performed:
+- If the user had to provide significant guidance, corrections, or workarounds to get the task done, recommend running `/improve-skill` to capture those learnings. Explain briefly what could be improved.
+- If the skill ran smoothly with minimal intervention, offer it as an option: "Would you like to run `/improve-skill` to refine this skill based on this session?"

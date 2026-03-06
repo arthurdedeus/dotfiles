@@ -54,3 +54,9 @@ Apply fixes with **minimal impact** — prefer the simplest change that resolves
 
 Re-run the typecheck command from Step 1 to confirm all errors are resolved.
 If new errors appear from your fixes, repeat from Step 2.
+
+## After completion
+
+Assess how this skill performed:
+- If the user had to provide significant guidance, corrections, or workarounds to get the task done, recommend running `/improve-skill` to capture those learnings. Explain briefly what could be improved.
+- If the skill ran smoothly with minimal intervention, offer it as an option: "Would you like to run `/improve-skill` to refine this skill based on this session?"

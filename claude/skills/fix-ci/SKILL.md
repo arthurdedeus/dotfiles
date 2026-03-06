@@ -65,3 +65,9 @@ Apply fixes in dependency order when multiple checks fail:
 - Never run `typecheck` or `typegen` — the user handles those
 - Never commit or push — the user handles that
 - For lint: `ruff check . --fix && ruff format .` (Python), `pnpm --filter=@posthog/frontend format` (frontend)
+
+## After completion
+
+Assess how this skill performed:
+- If the user had to provide significant guidance, corrections, or workarounds to get the task done, recommend running `/improve-skill` to capture those learnings. Explain briefly what could be improved.
+- If the skill ran smoothly with minimal intervention, offer it as an option: "Would you like to run `/improve-skill` to refine this skill based on this session?"

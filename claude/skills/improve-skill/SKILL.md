@@ -1,17 +1,18 @@
 ---
 name: improve-skill
-description: Refine a skill after using it by incorporating generalizable patterns from the session. Use after a skill produced suboptimal guidance, missed a failure class, or required workarounds. Not for one-off fixes.
+description: Refine a skill or agent after using it by incorporating generalizable patterns from the session. Use after a skill/agent produced suboptimal guidance, missed a failure class, or required workarounds. Not for one-off fixes.
 ---
 
-# Improve a skill from session learnings
+# Improve a skill or agent from session learnings
 
-After using a skill, review how it performed and fold recurring, generalizable patterns back into the skill text.
+After using a skill or agent, review how it performed and fold recurring, generalizable patterns back into its definition.
 
-## Step 1: Identify the skill
+## Step 1: Identify the skill or agent
 
-Determine which skill was used in this session. Read the skill's `SKILL.md` file.
+Determine which skill or agent was used in this session. Read its `.md` file.
 
-If the skill lives in `.agents/skills/`, treat that as the source of truth (it is symlinked to `.claude/skills/`). Otherwise edit the `.claude/skills/` copy directly.
+For skills: check `.agents/skills/` first (source of truth, symlinked to `.claude/skills/`), then `.claude/skills/`.
+For agents: check `~/.claude/agents/` for agent `.md` files.
 
 ## Step 2: Reflect on the session
 
