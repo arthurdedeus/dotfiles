@@ -18,6 +18,8 @@ SYMLINKS=(
   "claude/settings.json:$HOME/.claude/settings.json"
   "claude/skills:$HOME/.claude/skills"
   "claude/knowledge:$HOME/.claude/knowledge"
+  "claude/agents:$HOME/.claude/agents"
+  "claude/plans:$HOME/.claude/plans"
 
   # zed
   "zed/settings.json:$HOME/.config/zed/settings.json"

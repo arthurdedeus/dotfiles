@@ -1,10 +1,14 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "permissions": {
-    "allow": ["Bash(git rev-parse:*)", "Read(~/.claude/**)"]
+    "allow": [
+      "Bash(git rev-parse:*)",
+      "Read(~/.claude/**)"
+    ]
   },
   "alwaysThinkingEnabled": true,
   "feedbackSurveyState": {
     "lastShownTime": 1754341096818
-  }
+  },
+  "effortLevel": "high"
 }

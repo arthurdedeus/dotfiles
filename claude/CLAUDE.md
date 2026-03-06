@@ -6,5 +6,5 @@ DO NOT run format code. I will run these commands myself.
 Omit co-authorship in commit messages.
 Be terse in commit messages.
 Always capitalize the first letter of the actual commit message. Example `fix(data-table): Remove bad code`.
-When writing guides or plan docs, write them to `tmp` folder, as it is git ignored.
+When writing guides or plan docs, write them to `.claude/plans/{org}/{repo}/` (org: posthog or personal).
 When I tell you to test it yourself or test in browser, you should use Claude in Chrome MCP to open the app in the browser.
