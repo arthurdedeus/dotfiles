@@ -16,9 +16,7 @@ SYMLINKS=(
   # claude
   "claude/CLAUDE.md:$HOME/.claude/CLAUDE.md"
   "claude/settings.json:$HOME/.claude/settings.json"
-  "claude/skills/pr-description/SKILL.md:$HOME/.claude/skills/pr-description/SKILL.md"
-  "claude/skills/write-snapshot-test/SKILL.md:$HOME/.claude/skills/write-snapshot-test/SKILL.md"
-  "claude/skills/fix-migrations/SKILL.md:$HOME/.claude/skills/fix-migrations/SKILL.md"
+  "claude/skills:$HOME/.claude/skills"
   "claude/knowledge:$HOME/.claude/knowledge"
 
   # zed
