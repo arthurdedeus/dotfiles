@@ -106,12 +106,14 @@ Do not auto-resolve. Ask the user how to proceed for each migration file. Common
 Run mergiraf as a second pass (it may have already run as a merge driver during the git operation itself, but sometimes conflicts remain). It is installed and configured as a git merge driver:
 
 ```bash
-mergiraf solve -- <file> --compact
+mergiraf solve -c <file>
 ```
 
 After running mergiraf, read the file and check for remaining conflict markers (`<<<<<<<`). If conflict markers remain, proceed with AI analysis (see Step 2c).
 
-If mergiraf fully resolves the file (no markers remain), stage it:
+If mergiraf fully resolves the file (no markers remain), skim for semantic issues beyond markers: dead references to removed identifiers, orphaned code blocks, or duplicated declarations. Mergiraf operates structurally but doesn't validate cross-reference integrity.
+
+Stage the file:
 
 ```bash
 git add <file>
@@ -158,6 +160,8 @@ When the base section is empty or contains substantially less code than both sid
 | Empty or missing code | <70% similar | **Ask user**: true divergence, present both options |
 | Present | Both modified | **Ask user**: standard conflict, present analysis |
 
+**Repeated pattern conflicts** — When multiple hunks have the same structural conflict (e.g., the same rename on both sides across several reducers), it's tempting to batch-resolve them all the same way. Still present the pattern to the user and ask which side to pick before resolving. Getting it wrong multiplies the damage across all hunks.
+
 For auto-resolutions, always report clearly what was resolved and why:
 
 > Auto-resolved `src/feature.ts` hunk at line 42: stacked PR duplicate (HEAD and incoming are 98% similar with empty base). Kept HEAD version.
@@ -191,3 +195,9 @@ After all conflicts are resolved and staged:
 
 3. If more conflicts arise (rebase), loop back to Step 2
 4. When complete, report a summary: conflicts resolved (auto-resolved vs user-resolved), lock files regenerated, and rerere resolutions if any were applied (rerere is enabled globally and records/replays resolutions automatically)
+
+## After completion
+
+Assess how this skill performed:
+- If the user had to provide significant guidance, corrections, or workarounds to get the task done, recommend running `/improve-skill` to capture those learnings. Explain briefly what could be improved.
+- If the skill ran smoothly with minimal intervention, offer it as an option: "Would you like to run `/improve-skill` to refine this skill based on this session?"
