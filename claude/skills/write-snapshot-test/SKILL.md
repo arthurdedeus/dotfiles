@@ -14,6 +14,14 @@ When using this command, provide:
 2. **Component props/interface** - The TypeScript interface or props definition
 3. **Key states to test** - Different variants, loading states, error states, etc.
 
+## Before You Start
+
+Before writing any new stories, check if snapshot coverage already exists:
+
+1. **Search for existing stories** — `grep -r 'ComponentName' --include='*.stories.tsx'` in the relevant directory and neighboring directories
+2. **Search for existing snapshots** — check `frontend/__snapshots__/` for files matching the component or scene name (snapshots follow `{story-id}--{theme}.png` naming)
+3. **If a story already covers the needed state** (e.g., an empty state story exists and you only changed text in the component it renders), no new story is needed. The existing story will automatically pick up the change, and **CI will regenerate the snapshot PNGs**. Inform the user and stop.
+
 ## Implementation Instructions
 
 ### File Structure
@@ -232,18 +240,21 @@ export const FormStates: Story = {
 5. **Comparison method** - Uses SSIM (structural similarity) with 1% threshold, not pixel-perfect
 6. **Retries** - Tests retry 2 times on failure
 7. **CI behavior** - In CI, tests also wait for network idle state
+8. **Existing coverage may suffice** — If you changed text, styles, or markup in a component that an existing story already renders, no new story is needed. The existing story picks up the change automatically and CI will regenerate the snapshots
 
-### Running Tests
+### Snapshot Generation
 
+**Snapshots are generated in CI (GitHub Actions), not locally.** Do not attempt to run snapshot update commands locally — the Docker-based toolchain requires a full environment that may not be available in worktrees or dev setups.
+
+Your job is to create or modify the `.stories.tsx` file. Once pushed, CI will:
+1. Build Storybook
+2. Render each story in Chromium
+3. Generate/update the `.png` snapshots in `frontend/__snapshots__/`
+4. Commit updated snapshots automatically
+
+If you need to debug a story locally, you can run Storybook directly:
 ```bash
-# Update snapshots (runs in Docker for consistency)
-pnpm --filter=@posthog/storybook test:visual:update
-
-# Verify snapshots
-pnpm --filter=@posthog/storybook test:visual:ci:verify
-
-# Debug specific story
-PWDEBUG=1 pnpm --filter=@posthog/storybook test:visual:debug
+pnpm --filter=@posthog/storybook storybook
 ```
 
 ### Skip Testing

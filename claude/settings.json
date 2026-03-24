@@ -7,8 +7,8 @@
     ]
   },
   "alwaysThinkingEnabled": true,
+  "effortLevel": "high",
   "feedbackSurveyState": {
     "lastShownTime": 1754341096818
-  },
-  "effortLevel": "high"
+  }
 }
