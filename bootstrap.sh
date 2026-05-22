@@ -15,6 +15,7 @@ SYMLINKS=(
 
   # claude
   "claude/CLAUDE.md:$HOME/.claude/CLAUDE.md"
+  "claude/disagreement-and-calibration.md:$HOME/.claude/disagreement-and-calibration.md"
   "claude/settings.json:$HOME/.claude/settings.json"
   "claude/skills:$HOME/.claude/skills"
   "claude/knowledge:$HOME/.claude/knowledge"
