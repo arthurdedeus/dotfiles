@@ -55,6 +55,37 @@ git diff --name-only --diff-filter=U
 | active | yes | `--continue` | Run `git <context> --continue` (use `git commit --no-edit` for merge) |
 | active | yes | none | Go to Step 2 (Resolve Conflicts) |
 
+### Step 1.5: Rule out an already-merged branch (rebase / cherry-pick of a multi-commit branch)
+
+Before grinding through conflicts, check whether the branch's work is already on the base. A branch that was **squash-merged** into its base leaves its individual commits looking unmerged (squashing breaks patch-id matching), so a rebase replays them and conflicts on nearly every step — even though the base already contains the work, often in a *more refined* form. Finishing the rebase then re-applies duplicates and clobbers the base's refinements.
+
+Strong signals: conflicts on most/all rebase steps where **ours (the base)** is a superset of **theirs (the replayed commit)**; or the base content is already present on the base branch despite a real stage-1 base existing.
+
+Identify which commits are genuinely new vs already landed (`BASE` = the branch you're rebasing onto / cherry-picking from, e.g. `master`):
+
+```bash
+MB=$(git merge-base HEAD "$BASE")
+git diff --name-only "$MB" HEAD | while read -r f; do
+  b=$(git rev-parse "$BASE:$f" 2>/dev/null || echo MISSING)
+  h=$(git rev-parse "HEAD:$f" 2>/dev/null)
+  if [ "$b" = "$h" ]; then echo "LANDED        $f"
+  elif [ "$b" = MISSING ]; then echo "NEW FILE      $f"
+  else git diff --numstat "$BASE" HEAD -- "$f" | awk -v f="$f" '{print ($1==0 ? "BASE-SUPERSET " : "DIVERGED      ") f}'; fi
+done
+```
+
+Files identical to base, or where the branch only deletes (`numstat +0/-N` → base is a superset), are already landed. Files the branch *adds* are the genuinely new work; map them to commits with `git log --oneline "$MB"..HEAD -- <file>`. (`git cherry` is unreliable here — squash merges make it report everything as new.)
+
+If most commits are already landed, **stop and propose switching strategy** rather than finishing the rebase: abort, branch off the base fresh, and cherry-pick only the genuinely-new commits in chronological order:
+
+```bash
+git rebase --abort   # or cherry-pick --abort
+git checkout -b <branch>-new "$BASE"
+git cherry-pick <new commits, oldest first>
+```
+
+Present the landed-vs-new breakdown and confirm with the user before switching.
+
 ### Step 2: Resolve Conflicts
 
 #### 2a: Categorize Conflicts
@@ -93,6 +124,17 @@ git checkout --theirs <file> && git add <file>
 
 Track which lock files need regeneration (handled in Step 3).
 
+**Generated files (non-lockfile) — handle before mergiraf / AI analysis**
+
+Files generated from a source (e.g. `schema.json`, generated `schema.py`, `api.schemas.ts`/`api.ts`, generated MCP/SQL clients, `.ambr` snapshots) are categorized as `mergiraf` or `other`, but must **not** be hand-merged. Same principle as lock files: resolve the conflict in their **source** (the schema/serializer/types file — often it auto-merged cleanly), then regenerate, which overwrites the markers entirely, then stage:
+
+```bash
+<regen command, e.g. hogli build:schema, hogli build:openapi>
+git add <generated file>
+```
+
+If the source itself also conflicts, resolve it first (Step 2c), then regenerate. After regenerating, confirm the file has no markers and that the change you expected is present.
+
 **2. Migrations (`migration`)**
 
 Do not auto-resolve. Ask the user how to proceed for each migration file. Common options:
@@ -110,6 +152,13 @@ mergiraf solve -c <file>
 ```
 
 After running mergiraf, read the file and check for remaining conflict markers (`<<<<<<<`). If conflict markers remain, proceed with AI analysis (see Step 2c).
+
+If mergiraf reports it can't use the base (e.g. *"Cannot solve conflicts in diff2 style, merging from scratch"*) and the leftover markers show an **empty `||||||| BASE`** section, do not trust that empty base — git may still have a real merge base, and treating it as empty can misclassify a genuine conflict as a stacked-PR duplicate. Inspect the true three-way stages directly before deciding (stage 1 = base, 2 = ours, 3 = theirs):
+
+```bash
+git ls-files -u <file>     # confirms which stages exist
+git show :1:<file>         # base — git show :2: ours, :3: theirs
+```
 
 If mergiraf fully resolves the file (no markers remain), skim for semantic issues beyond markers: dead references to removed identifiers, orphaned code blocks, or duplicated declarations. Mergiraf operates structurally but doesn't validate cross-reference integrity.
 
@@ -174,7 +223,12 @@ After resolving all hunks in a file, stage it: `git add <file>`
 
 After all conflicts are resolved and staged:
 
-1. If lock files were resolved, regenerate them now:
+1. Clean up `.orig` files left behind by merge tools (e.g., mergiraf):
+   ```bash
+   git diff --name-only --diff-filter=U HEAD 2>/dev/null; find . -name '*.orig' -newer .git/index -not -path './.git/*' -delete
+   ```
+   This removes any `.orig` backup files created during conflict resolution so they don't pollute the working tree or diff.
+3. If lock files were resolved, regenerate them now:
    - `package-lock.json` -- `npm install`
    - `pnpm-lock.yaml` -- `pnpm install`
    - `yarn.lock` -- `yarn install`
@@ -184,7 +238,7 @@ After all conflicts are resolved and staged:
    - `Gemfile.lock` -- `bundle install`
    - `composer.lock` -- `composer install`
    - Stage the regenerated lock file: `git add <lockfile>`
-2. Run the appropriate continue command:
+4. Run the appropriate continue command:
 
    | Context | Continue command |
    | --- | --- |
@@ -193,8 +247,8 @@ After all conflicts are resolved and staged:
    | cherry-pick | `git cherry-pick --continue` |
    | revert | `git revert --continue` |
 
-3. If more conflicts arise (rebase), loop back to Step 2
-4. When complete, report a summary: conflicts resolved (auto-resolved vs user-resolved), lock files regenerated, and rerere resolutions if any were applied (rerere is enabled globally and records/replays resolutions automatically)
+5. If more conflicts arise (rebase), loop back to Step 2
+6. When complete, report a summary: conflicts resolved (auto-resolved vs user-resolved), lock files regenerated, and rerere resolutions if any were applied (rerere is enabled globally and records/replays resolutions automatically)
 
 ## After completion
 
