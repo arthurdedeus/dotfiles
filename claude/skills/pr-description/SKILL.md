@@ -25,11 +25,25 @@ Run these git commands to understand the changes:
 
 ### Step 2: Read the PR template
 
-Read the file `.github/pull_request_template.md` from the repo root. This is the source of truth for the PR description structure. Parse its sections (headings and HTML comments) to understand what to fill in.
+Read the file `.github/pull_request_template.md` from the repo root. This is the source of truth for the PR description structure.
+
+**Preserve the template's HTML comments verbatim in your output.** They are prompts for the human author and future editors, not scaffolding to discard. Place your content next to the comment it relates to — typically your content first, then the original comments below it, untouched.
 
 ### Step 3: Look for linked issues
 
-Search commit messages and branch name for issue references (e.g., `#1234`, `ISSUE-1234`). If found, include them in the Problem section.
+Search commit messages and branch name for issue references (e.g., `#1234`, `posthog#1234`, `closes #1234`). If found, format as a full GitHub URL on its own line in the Problem section, placed **after** the template comments:
+
+```
+Closes https://github.com/PostHog/posthog/issues/1234
+```
+
+If no issue reference is found anywhere in commits or the branch name, leave a placeholder for the human to fill in:
+
+```
+Closes #
+```
+
+Do not invent issue numbers.
 
 ### Step 4: Detect change type
 
@@ -41,24 +55,61 @@ Based on the diff, determine:
 
 ### Step 5: Write the PR description
 
-Fill in the template sections from Step 2 with content derived from the diff:
+**Tone: terse, direct, telegraphic.** Fragments are fine. The reviewer can read the diff — don't restate it. Avoid prose paragraphs anywhere. If you're tempted to add context, framework, or motivation, cut it. The PR description is a pointer to the diff, not a summary of it.
 
-- **Problem**: Explain the "why" — what user need or bug this addresses. Be concise but specific.
-- **Changes**: Concise summary of what was done, not a file-by-file changelog. If there are frontend changes, mention that screenshots should be added. If a design was involved, mention Figma.
-- **How did you test this code?**: Describe testing approach. If you are an agent, state that clearly and only list code-based tests you actually ran — do NOT claim manual testing you didn't do.
-- **Publish to changelog?**: Write "no" unless the user says otherwise.
-- **Docs update**: Leave empty (just keep the section).
-- **LLM context**: Uncomment this section and note that Claude Code authored the PR description.
+Fill in the template sections, keeping all HTML comments in place:
 
-### Guidelines
+- **Problem**: 1 short declarative sentence stating the bare need or bug. Not a paragraph. Not "We're building X for users who…". Just "There is no way to review account notes." style. Place the `Closes` line from Step 3 below the template's comments.
+- **Changes**: 3–6 short imperative bullets, **one line each**, present tense. Examples: "Make accounts rows expandable", "Display X in the expanded state", "Fix Y where Z was happening". Not a file-by-file changelog. Do not decorate with technical detail unless it's the actual point of the change. Do **not** add a "screenshots to be added" sentence — the template's existing comment already prompts for that and the human author pastes the image.
+- **How did you test this code?**: One short line. As an agent, list only what you actually ran. If you ran the unit test suite, write `Unit tests`. **Never claim manual UI testing you didn't do** — even if the user typically does it, you didn't.
+- **Publish to changelog?**: `No` (capitalized), unless the user says otherwise.
+- **Docs update**: `No` (capitalized), unless docs were changed in this PR.
+- **🤖 Agent context**: Add **one short line** at the top of the section, e.g. `Authored by Claude Code.` Keep all the template comments below it. Do not write paragraphs of decisions, summaries, or rationale — the commits and diff already cover that. If there's a genuinely non-obvious tradeoff the reviewer would otherwise miss, one extra short sentence is OK.
 
-- The Problem section should explain the "why" — what user need or bug this addresses
-- The Changes section should be a concise summary of what was done, not a file-by-file changelog
-- Infer the purpose from commit messages, branch name, and the actual code changes
-- If the branch name follows a pattern like `fix/...`, `feat/...`, `chore/...`, use that to inform the description
-- For the test section, check if test files were modified/added and mention them specifically
+### Style reference (gold standard)
+
+The following is the desired terseness and structure. Mirror it.
+
+```markdown
+## Problem
+There is no way to do X.
+<!-- Who are we building for, what are their needs, why is this important? -->
+
+<!-- Does this fix an issue? Uncomment the line below with the issue ID to automatically close it when merged -->
+<!-- Closes #ISSUE_ID -->
+
+Closes https://github.com/<org>/<repo>/issues/<id>
+
+## Changes
+- Make rows expandable
+- Display child items in the expanded state
+- Clicking the item opens its detail view
+- Fix creation via API, where we were only setting `text_content` but not `content` (the body looked empty in the editor)
+<!-- If there are frontend changes, please include screenshots. -->
+<!-- If a reference design was involved, include a link to the relevant Figma frame! -->
+
+## How did you test this code?
+Unit tests
+<!-- ...template comments preserved... -->
+
+## Publish to changelog?
+No
+<!-- ...template comments preserved... -->
+
+## Docs update
+No
+<!-- ...template comments preserved... -->
+
+## 🤖 Agent context
+Authored by Claude Code.
+<!-- ...template comments preserved... -->
+```
+
+### Output rules
+
 - Output ONLY the filled-in template content, ready to paste into a PR
 - CRITICAL: Output the final PR description inside a fenced code block (triple backticks with `markdown` language tag) so the user sees raw markdown they can copy-paste directly. Do NOT render it.
+- Infer the purpose from commit messages, branch name, and actual code changes. Branch prefixes like `fix/`, `feat/`, `chore/` are signal.
 
 ## After completion
 

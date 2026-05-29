@@ -57,12 +57,53 @@ Apply fixes in dependency order when multiple checks fail:
 4. Tests
 5. Visual regression
 
+## Step 5: Verify
+
+Before reporting the fix as done, verify locally that the failing check passes.
+
+### For frontend type errors
+
+CI runs `kea-typegen write` before `tsc --noEmit`. Skipping typegen locally produces
+misleading results: stale `*LogicType.ts` files can hide real errors (looser types
+on generated actions/selectors) or surface phantom ones.
+
+Run typegen first **if the fix touched any kea logic file**
+(`*Logic.ts`, `*Logic.tsx`), the file imports from `kea`, `kea-forms`, or
+`kea-loaders`, OR the type error references a generated `*LogicType`:
+
+```bash
+pnpm --filter=@posthog/frontend typegen:write
+```
+
+Then run the typecheck and grep for the specific file CI reported:
+
+```bash
+pnpm --filter=@posthog/frontend typescript:check 2>&1 | grep -E "<file>" | head -5
+```
+
+Only report the fix as verified once the targeted error line is gone. Unrelated
+errors in other files (especially "Cannot find module './*LogicType'" or
+`implicitly has an 'any' type`) are stale-typegen artifacts and don't block CI
+if `typegen:write` was just run.
+
+### For backend type errors
+
+Do not run `mypy` — it's slow. Trust the CI signal after the fix is applied.
+
+### For tests, lint, migrations
+
+Re-run the specific failing test/lint/migration locally if possible:
+- `hogli test <path>` for a single pytest/jest file
+- `ruff check <file>` / `pnpm --filter=@posthog/frontend format` for lint
+- `./bin/migrate` for migration sanity
+
 ## Rules
 
 - Always start with `gh pr checks` for the current state
 - Use `--log-failed` first (faster). Only `--log` when you need cross-browser or passing-job data
 - For flaky tests (pass on retry), note them but don't fix unless they fail 3+ times consistently
-- Never run `typecheck` or `typegen` — the user handles those
+- Run `typegen:write` before `typescript:check` when the fix touches a kea logic file — otherwise stale generated types give false-positive/negative results
+- Never run `mypy` — too slow; trust CI
 - Never commit or push — the user handles that
 - For lint: `ruff check . --fix && ruff format .` (Python), `pnpm --filter=@posthog/frontend format` (frontend)
 
