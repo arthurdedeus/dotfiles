@@ -5,11 +5,6 @@ DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # ── Symlink map (source:target) ─────────────────────────────────────────────
 SYMLINKS=(
-  # zsh
-  "zsh/zshrc:$HOME/.zshrc"
-  "zsh/zprofile:$HOME/.zprofile"
-  "zsh/zshenv:$HOME/.zshenv"
-
   # git
   "git/ignore:$HOME/.config/git/ignore"
 
@@ -81,33 +76,7 @@ fi
 info "Installing packages from Brewfile…"
 brew bundle --file="$DOTFILES_DIR/Brewfile" || warn "Some Brewfile dependencies failed (may need sudo). Continuing…"
 
-# ── 3. Oh My Zsh ────────────────────────────────────────────────────────────
-if [ ! -d "$HOME/.oh-my-zsh" ]; then
-  info "Installing Oh My Zsh…"
-  sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
-else
-  ok "Oh My Zsh already installed"
-fi
-
-# ── 4. Zsh plugins ──────────────────────────────────────────────────────────
-ZSH_CUSTOM="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}"
-declare -A PLUGINS=(
-  [zsh-autosuggestions]="https://github.com/zsh-users/zsh-autosuggestions"
-  [zsh-syntax-highlighting]="https://github.com/zsh-users/zsh-syntax-highlighting"
-  [fast-syntax-highlighting]="https://github.com/zdharma-continuum/fast-syntax-highlighting"
-  [zsh-autocomplete]="https://github.com/marlonrichert/zsh-autocomplete"
-)
-for plugin in "${!PLUGINS[@]}"; do
-  dest="$ZSH_CUSTOM/plugins/$plugin"
-  if [ ! -d "$dest" ]; then
-    info "Cloning $plugin…"
-    git clone --depth=1 "${PLUGINS[$plugin]}" "$dest"
-  else
-    ok "$plugin already installed"
-  fi
-done
-
-# ── 5. Symlinks ──────────────────────────────────────────────────────────────
+# ── 3. Symlinks ──────────────────────────────────────────────────────────────
 info "Creating symlinks…"
 for entry in "${SYMLINKS[@]}"; do
   src="$DOTFILES_DIR/${entry%%:*}"

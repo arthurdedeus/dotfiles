@@ -54,10 +54,6 @@ brew "rustup"
 brew "vips"
 # Tool for managing your YubiKey configuration
 brew "ykman"
-# Fish-like fast/unobtrusive autosuggestions for zsh
-brew "zsh-autosuggestions"
-# Fish shell like syntax highlighting for zsh
-brew "zsh-syntax-highlighting"
 # Supabase CLI
 brew "supabase/tap/supabase"
 # Allows you to manage your stacked changes and submit them for review on GitHub
