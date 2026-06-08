@@ -37,11 +37,7 @@ Search commit messages and branch name for issue references (e.g., `#1234`, `pos
 Closes https://github.com/PostHog/posthog/issues/1234
 ```
 
-If no issue reference is found anywhere in commits or the branch name, leave a placeholder for the human to fill in:
-
-```
-Closes #
-```
+If no issue reference is found anywhere in commits or the branch name, **omit the `Closes` line entirely** — do not add a `Closes #` placeholder. The template already keeps its `<!-- Closes #ISSUE_ID -->` comment, which is the prompt for the human to fill in if there's an issue.
 
 Do not invent issue numbers.
 

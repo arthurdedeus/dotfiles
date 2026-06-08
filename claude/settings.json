@@ -138,7 +138,8 @@
   },
   "enabledPlugins": {
     "superpowers@claude-plugins-official": true,
-    "autoresearch@autoresearch": true
+    "autoresearch@autoresearch": true,
+    "vercel@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
     "autoresearch": {
