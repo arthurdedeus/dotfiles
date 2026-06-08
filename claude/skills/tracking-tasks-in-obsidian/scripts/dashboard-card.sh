@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
-# Idempotently add a task card under a column of the Obsidian Kanban dashboard.
+# Ensure a task card sits under a given column of the Obsidian Kanban dashboard.
 #
 # Usage: dashboard-card.sh "<Task title>" ["<Column>"]
 #   <Column> defaults to "In Progress".
-# Inserts `- [ ] [[<Task title>]]` as the first card under "## <Column>".
-# No-op if a card linking to this task already exists anywhere on the board
-# (so it is safe to call on every run, and it never moves an existing card).
+#
+# Idempotent — pass the column that matches the task's current state:
+#   - card absent            -> adds `- [ ] [[<Task title>]]` under <Column>
+#   - card in another column -> moves the existing card line (verbatim) to <Column>
+#   - card already in <Column> -> no-op
 set -euo pipefail
 
 VAULT_DIR="${OBSIDIAN_VAULT_DIR:-$HOME/Documents/obsidian/PostHog}"
@@ -22,19 +24,37 @@ if [[ ! -f "$DASHBOARD" ]]; then
     echo "error: dashboard not found at $DASHBOARD" >&2
     exit 1
 fi
+# Fail before mutating if the target column doesn't exist, so a move never drops
+# the card without re-inserting it.
+if ! grep -qxF -- "## $column" "$DASHBOARD"; then
+    echo "error: column \"$column\" not found in $DASHBOARD" >&2
+    exit 1
+fi
 
-# Idempotency: bail if a wikilink to this task already exists on the board.
-if grep -qF -- "[[$title]]" "$DASHBOARD"; then
-    echo "exists: [[$title]] already on the board"
+needle="[[$title]]"
+
+# Which column (if any) currently holds the card?
+current_col="$(awk -v needle="$needle" '
+    index($0, "## ") == 1 { c = substr($0, 4) }
+    index($0, needle) > 0 { print c; exit }
+' "$DASHBOARD")"
+
+if [[ "$current_col" == "$column" ]]; then
+    echo "ok: [[$title]] already in \"$column\""
     exit 0
 fi
 
-card="- [ ] [[$title]]"
-tmp="$(mktemp)"
+# Preserve the existing card line verbatim (keeps any trailing text / checkbox
+# state); fall back to a fresh unchecked card when adding for the first time.
+card_line="$(grep -m1 -F -- "$needle" "$DASHBOARD" || true)"
+[[ -n "$card_line" ]] || card_line="- [ ] $needle"
 
-# Insert the card as the first item under the target column heading, keeping the
-# blank line the Kanban plugin writes between a heading and its cards.
-awk -v col="## $column" -v card="$card" '
+tmp="$(mktemp)"
+awk -v col="## $column" -v card="$card_line" -v had="${current_col:+1}" '
+    # Drop the existing card line from its old column (first match only).
+    had && !dropped && $0 == card { dropped = 1; next }
+    # Insert under the target column as the first card, after the blank line the
+    # Kanban plugin leaves between a heading and its cards.
     armed && /^[[:space:]]*$/ { print; print card; armed = 0; next }
     armed                     { print card; armed = 0; print; next }
     { print }
@@ -42,11 +62,15 @@ awk -v col="## $column" -v card="$card" '
     END { if (armed) print card }
 ' "$DASHBOARD" > "$tmp"
 
-if ! grep -qF -- "$card" "$tmp"; then
+if ! grep -qF -- "$card_line" "$tmp"; then
     rm -f "$tmp"
-    echo "error: column \"$column\" not found in $DASHBOARD" >&2
+    echo "error: failed to place card under \"$column\"" >&2
     exit 1
 fi
 
 mv "$tmp" "$DASHBOARD"
-echo "added: $card under \"$column\""
+if [[ -n "$current_col" ]]; then
+    echo "moved: [[$title]] \"$current_col\" -> \"$column\""
+else
+    echo "added: $card_line under \"$column\""
+fi

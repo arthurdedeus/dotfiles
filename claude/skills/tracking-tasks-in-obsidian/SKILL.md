@@ -43,27 +43,28 @@ Decide the PARA folder (see table), then:
 - `found\t<path>` → **read it and append**, never duplicate or overwrite history.
 - `new\t<path>` → create it with the template below (`mkdir -p` the parent first).
 
-### 2. Add it to the dashboard (kicked-off → In Progress)
+### 2. Put it on the dashboard (kicked-off → In Progress)
 
 ```bash
 ~/.claude/skills/tracking-tasks-in-obsidian/scripts/dashboard-card.sh "<Title>"
 ```
 
-Idempotent and defaults to the **In Progress** column. The card `- [ ] [[<Title>]]` links straight to the note. Call it on every run; it no-ops if the card already exists.
+Defaults to the **In Progress** column; the card `- [ ] [[<Title>]]` links straight to the note. The script *ensures* the card is in the column you pass — it adds the card if absent, **moves** it (preserving the card line) if it's elsewhere, and no-ops if it's already there. So always pass the column that matches the task's current phase.
 
 ### 3. Keep it alive as the work develops
 
 Append at meaningful moments — after a key decision, when changing direction, hitting a milestone, before a long context handoff, and at the end. Capture the **why**, not just the what: alternatives considered and rejected, dead-ends, constraints discovered, links to branches/PRs/files. This is the part that's easy to skip and the most valuable — the reasoning is the point.
 
-### 4. On completion (optional)
+### 4. Move the card as the task progresses
 
-Summarize the outcome in the note. Move the card to a later column and/or relocate the note to `4 Archives` if the work is done:
+The board column should reflect the task's phase. Re-run the same script with the new column at each transition — it moves the existing card:
 
 ```bash
-~/.claude/skills/tracking-tasks-in-obsidian/scripts/dashboard-card.sh "<Title>" "In Review"   # or "Done"
+~/.claude/skills/tracking-tasks-in-obsidian/scripts/dashboard-card.sh "<Title>" "In Review"   # PR opened
+~/.claude/skills/tracking-tasks-in-obsidian/scripts/dashboard-card.sh "<Title>" "Done"         # merged / shipped
 ```
 
-(The card is only added if absent; to *move* one, edit `Dashboard.md` directly.)
+On completion, summarize the outcome in the note, and relocate it to `4 Archives` if the work is fully done. (Column names must match your board's headings exactly — the script errors out rather than guessing.)
 
 ## PARA placement
 
@@ -108,5 +109,5 @@ Match the vault's existing notes: sentence-case headings, bullet-heavy, `[[wikil
 - **Filename ≠ card text.** They must match exactly or the `[[wikilink]]` breaks. Pass the same `<Title>` to both scripts.
 - **Logging only the what.** The reasoning behind choices is the whole point — write the *why*.
 - **Creating a second note** for the same task instead of reading and appending to the one `task-file.sh` returns as `found`.
-- **Editing `Dashboard.md` by hand** to add a card — use the script (idempotent, column-aware). Hand-edit only to *move* a card.
+- **Editing `Dashboard.md` by hand** — the script adds *and* moves cards idempotently; let it own the board.
 - **Tracking trivia.** A skill invocation and a board card for a one-liner is noise.
