@@ -14,10 +14,12 @@ Environment facts that drive the choices:
 
 ## 1. GUI stack
 
+`scrot` ships here too (desktop screenshot capture for browser-liveness proof — see §4), so it's installed once up front rather than mid-run:
+
 ```bash
 hogli devbox:exec -n <label> -- bash -lc 'sudo mv /etc/apt/sources.list.d/flox.list /tmp/flox.list.bak
 sudo apt-get update -qq
-sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq xvfb x11vnc novnc websockify fluxbox
+sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq xvfb x11vnc novnc websockify fluxbox scrot
 sudo mv /tmp/flox.list.bak /etc/apt/sources.list.d/flox.list' 2>/dev/null
 ```
 
@@ -104,7 +106,7 @@ The MCP scenario browser appears alongside it while a scenario runs and vanishes
 Notes:
 - `--output-dir` is where `browser_take_screenshot` writes files.
 - The browser launches lazily on the first tool call, not at server start.
-- **Verifying browser liveness:** don't `pgrep` for the profile path — the MCP server's own command line contains it (false positive). Check for real renderer processes (`pgrep -fc "type=renderer"`) or screenshot the desktop: `sudo apt-get install -y scrot` (with the flox.list dance), then `DISPLAY=:99 scrot -o /tmp/desktop.png` — Playwright's bundled ffmpeg has no x11grab, so scrot is the desktop-proof tool.
+- **Verifying browser liveness:** don't `pgrep` for the profile path — the MCP server's own command line contains it (false positive). Check for real renderer processes (`pgrep -fc "type=renderer"`) or screenshot the desktop with `DISPLAY=:99 scrot -o /tmp/desktop.png` (scrot is installed in §1) — Playwright's bundled ffmpeg has no x11grab, so scrot is the desktop-proof tool.
 - The stdio variant of this server may also exist in `~/posthog/.mcp.json` (`browser` entry) for Claude sessions running *on* the box — they coexist only if not used simultaneously (one profile, one browser).
 
 ## 5. SSH tunnel (local machine)

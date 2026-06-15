@@ -16,7 +16,7 @@ Runs the QA phase of a development task end-to-end: acceptance criteria → fres
 
 1. Resolve the working branch (argument, or current `git branch --show-current`).
 2. Find the proof destination, in priority order:
-   - Open PR for the branch: `gh pr view --json number,title,body,url` → proofs go to a PR comment.
+   - Open PR for the branch: `gh pr view --json number,title,body,url` → fill the **"How did you test this code?"** section of the PR body (edit the description in place — no separate over-the-top comment).
    - Else a linked/related GitHub issue (from the PR body, branch name, or conversation) → issue comment.
    - Else → local transfer only (`~/Downloads/qa-proofs/<branch>/`).
 3. Gather the task description: PR body, issue, and the conversation that led here.
@@ -38,6 +38,8 @@ Write a numbered list of concrete, executable criteria. Spawn an `Explore` subag
 
 Cover the happy path, the key edge cases, and at least one regression check on adjacent behavior the change could have broken. Post the list to the user as a checkpoint. If the task is ambiguous enough that criteria could go two ways, ask before proceeding; otherwise continue without blocking.
 
+Once the criteria exist, stand up a **live progress page** (see "Progress page" below) and give the user its URL alongside the watch URL — that's the single place they glance at to follow the run.
+
 ### Track B: devbox provisioning (background)
 
 ```bash
@@ -57,11 +59,15 @@ hogli devbox:exec -n qa-<slug> -- bash -lc 'cd ~/posthog && flox activate -- bas
 hogli devbox:exec -n qa-<slug> -- bash -lc 'cd ~/posthog && flox activate -- bash -c "python manage.py migrate"'
 ```
 
-## Phase 2 — Browser rig on the fresh box
+## Phase 2 — Parallel build-out: rig ∥ data
 
-Follow `references/devbox-browser-rig.md` exactly — it is the full runbook (GUI stack, Playwright Chromium, desktop supervisor, HTTP Playwright MCP server, SSH tunnel, MCP availability check). Summary of the end state:
+The browser rig and the data setup are independent — run them as **two concurrent tracks** once the box is up and the branch is checked out. The rig install (apt + Playwright) and `generate_demo_data` are the two slowest things in the run; never serialize them.
 
-- Xvfb desktop on `:99`, watchable at `https://6080--dev--<workspace>--<user>.coder.dev.posthog.dev/vnc.html` — give this URL to the user so they can watch live
+### Track A — Browser rig
+
+Follow `references/devbox-browser-rig.md` exactly — it is the full runbook (GUI stack, Playwright Chromium, desktop supervisor, HTTP Playwright MCP server, SSH tunnel, MCP availability check). The runbook installs `scrot` (desktop screenshot capture) as part of setup, so the tool is ready before any scenario runs. Summary of the end state:
+
+- Xvfb desktop on `:99`, watchable at `https://6080--dev--<workspace>--<user>.coder.dev.posthog.dev/vnc.html` — **always give this URL to the user immediately** so they can watch the browser live, plus a viewer Chromium pointed at the app (runbook step 4).
 - `@playwright/mcp` HTTP server on box port 8931, browser profile `~/.cc-chrome-profile`
 - Local tunnel `ssh -fN -L 8931:localhost:8931 coder.<workspace>` feeding the user-scope `devbox-browser` MCP registration
 
@@ -73,6 +79,20 @@ echo "<browser task prompt>" | claude -p --model sonnet --allowedTools "mcp__dev
 
 (Prompt via **stdin** — `--allowedTools` is variadic and swallows a positional prompt.)
 
+### Track B — App stack + data
+
+1. Stack up (skip if `--start-app` did it): `hogli devbox:exec -n qa-<slug> -- bash -lc 'cd ~/posthog && hogli up -d && hogli wait'`
+2. Demo data: `flox activate -- bash -c "python manage.py generate_demo_data"` → creates the Hedgebox org with login **test@posthog.com / 12345678**. This populates **Postgres** (org, project, feature flags) and *then* backfills events into **ClickHouse** asynchronously.
+3. **Don't wait for ClickHouse.** The seed and flag-sync commands only need the Postgres objects — fire them in **parallel** as soon as `generate_demo_data` returns; the CH event backfill keeps running in the background. Gate *only* CH-dependent criteria (event-based insights, counts) on the backfill settling.
+   - **Seed accounts**: discover with `ls products/<product>/backend/management/commands/`, check `--help`, then run. Example (customer analytics): `python manage.py seed_customer_analytics_accounts`.
+   - **Sync feature flags**: `flox activate -- bash -c "python manage.py sync_feature_flags"` — adds and enables every flag from `frontend/src/lib/constants.tsx` across all projects, so the feature under QA is actually on before scenarios touch `/flags`.
+
+If either track hits a **DB error** (`relation ... does not exist`, `column ... does not exist`, `InconsistentMigrationHistory`), the box's schema is behind the branch — run migrations and retry:
+
+```bash
+hogli devbox:exec -n qa-<slug> -- bash -lc 'cd ~/posthog && flox activate -- bash -c "python manage.py migrate"'
+```
+
 ## Phase 3 — Verify the rig
 
 Do not start scenarios until all three pass:
@@ -81,13 +101,22 @@ Do not start scenarios until all three pass:
 2. Browser smoke test: open `https://example.com`, expect the title back.
 3. App smoke test: open `http://localhost:8010` (the box's localhost — the browser runs there). **Always `localhost:8010`** (dev proxy); never `172.17.0.1:8000` (granian direct → CSRF 403 on `/flags`, no feature flags).
 
-## Phase 4 — App and data
+## Phase 4 — Login & known transients
 
-1. Stack up (skip if `--start-app` did it): `hogli devbox:exec -n qa-<slug> -- bash -lc 'cd ~/posthog && hogli up -d && hogli wait'`
-2. Demo data: `flox activate -- bash -c "python manage.py generate_demo_data"` → creates the Hedgebox org with login **test@posthog.com / 12345678**.
-3. Feature-specific seeds: discover with `ls products/<product>/backend/management/commands/`, check `--help`, then run. Example (customer analytics): `python manage.py seed_customer_analytics_accounts`.
-4. First browser login: a fresh box has an empty browser profile. The first browser scenario logs in (test@posthog.com / 12345678); the persistent profile keeps the session for every scenario after.
-5. Known transient: right after a backend restart the flags service may briefly 401 ("API key invalid or expired") while HyperCache hydrates — wait and retry, or restart `feature-flags`/`hypercache-server`.
+1. First browser login: a fresh box has an empty browser profile. The first browser scenario logs in (test@posthog.com / 12345678); the persistent profile keeps the session for every scenario after.
+2. Known transient: right after a backend restart the flags service may briefly 401 ("API key invalid or expired") while HyperCache hydrates — wait and retry, or restart `feature-flags`/`hypercache-server`.
+
+## Progress page
+
+A single HTML page on the box, served on a Coder-proxied port, that mirrors the criteria checklist and updates as the run progresses. Stand it up at the end of Phase 1 (as soon as the criteria exist) and rewrite it whenever a criterion's status changes.
+
+Write `/tmp/qa-progress.html` with a row per criterion (ID, statement, status badge — ⏳ pending / 🟡 running / ✅ pass / ❌ fail→fixed), then serve it:
+
+```bash
+hogli devbox:exec -n qa-<slug> -- bash -lc 'cd /tmp && setsid nohup flox activate -- bash -c "python -m http.server 7800" >/tmp/qa-progress-http.log 2>&1 < /dev/null & sleep 2; ss -tln | grep ":7800"' 2>/dev/null
+```
+
+URL (derive on the box, never hardcode): `hogli devbox:exec -n qa-<slug> -- bash -lc 'echo "${VSCODE_PROXY_URI/\{\{port\}\}/7800}/qa-progress.html"'`. The server always serves the latest file on disk, so updating progress is just overwriting `/tmp/qa-progress.html` — no restart. Give the user this URL next to the watch URL.
 
 ## Phase 5 — Scenario execution loop
 
@@ -106,8 +135,8 @@ Default model: **sonnet**. Use **haiku** only for genuinely trivial single-comma
 
 ### Per criterion
 
-1. Spawn the matching subagent(s) with the criterion's steps, expected result, and proof instructions (`references/proofs.md` for capture commands; proof files go to `/tmp/qa-proofs/<AC-id>/` on the box).
-2. **PASS** → record evidence and file paths, move on.
+1. Spawn the matching subagent(s) with the criterion's steps, expected result, and proof instructions (`references/proofs.md` for capture commands; proof files go to `/tmp/qa-proofs/<AC-id>/` on the box). Flip the criterion to 🟡 on the progress page when you start it.
+2. **PASS** → record evidence and file paths, flip to ✅ on the progress page, move on.
 3. **FAIL** → diagnose (re-read subagent evidence; spawn a log watcher and re-run the flow if the cause isn't clear). Then fix the code **locally** in the working tree.
 4. Get the fix onto the box. Default transport for iteration is mutagen mirroring (seconds per change, no pushes):
    ```bash
@@ -126,7 +155,10 @@ Per passed criterion, produce the proof named in the criteria. Full capture reci
    mkdir -p ~/Downloads/qa-proofs/<branch> && scp -r coder.<workspace>:/tmp/qa-proofs/* ~/Downloads/qa-proofs/<branch>/
    ```
    (scp works through the coder SSH host; fallback is base64 over `devbox:exec`.)
-2. Post to the destination from Phase 0 — `gh pr comment` / `gh issue comment` with the report template in `references/proofs.md`: a criteria table, text proofs (API/SQL) inline in code blocks, and image/GIF proofs listed by filename with their local path. **`gh` cannot upload images** — state in the comment that visual proofs are at `~/Downloads/qa-proofs/<branch>/` for drag-and-drop, and tell the user the same in chat.
+2. Write the proof block to the destination from Phase 0 (template in `references/proofs.md`): a criteria table, text proofs (API/SQL) inline in code blocks, and image/GIF proofs listed by filename with their local path.
+   - **PR** → `gh pr edit --body-file -`: replace the contents of the **"How did you test this code?"** section with the block, leaving the rest of the description intact. Keep it tight — it lives in the description, not a wall-of-text comment.
+   - **Issue** → `gh issue comment`.
+   - **`gh` cannot upload images** — state that visual proofs are at `~/Downloads/qa-proofs/<branch>/` for drag-and-drop, and tell the user the same in chat.
 3. No PR and no issue → local transfer only; full report in chat.
 
 ## Phase 7 — Wrap-up
@@ -135,7 +167,7 @@ Report to the user:
 
 - Criteria table: ID, statement, PASS/FAIL, proof artifact
 - Code changes made (commits on the branch, not pushed unless approved)
-- The noVNC watch URL and the box name
+- The noVNC watch URL, the progress-page URL, and the box name
 - Running daemons left on the box (desktop, Playwright MCP server) and the local tunnel
 - **Ask whether to stop the box** — it bills while running: `hogli devbox:stop -n qa-<slug>` (disk persists). Don't stop it unprompted; the user may want to poke around.
 

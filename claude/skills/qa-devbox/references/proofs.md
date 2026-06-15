@@ -82,16 +82,24 @@ hogli devbox:exec -n <label> -- bash -lc 'base64 < /tmp/qa-proofs/AC3/AC3-x.png'
 
 ## Posting the report
 
-Destination from Phase 0: PR comment → issue comment → chat-only. Pass the body via stdin (`--body-file -`), never a temp file.
+Destination from Phase 0: **PR → fill the "How did you test this code?" section of the description** → else issue comment → else chat-only. Pass the body via stdin (`--body-file -`), never a temp file.
+
+**Into the PR description.** Don't add a separate top-level comment — replace the placeholder under the existing **"How did you test this code?"** heading with the block below, keeping the rest of the description untouched:
+
+```bash
+gh pr view --json body -q .body          # read current body
+# swap the "How did you test this code?" section contents for the QA block, then:
+gh pr edit --body-file -                  # pipe the full new body via stdin
+```
+
+If the section is missing from the template, append it. Keep it concise — it lives in the description, so favour the table + inline text proofs over prose.
 
 **`gh` cannot attach images.** Inline what is text (API/SQL proofs in code blocks); list visual proofs by filename and state where they are locally so the user can drag-and-drop them in. Say the same in chat.
 
-Template:
+Block to drop into the section (or to use verbatim for an issue comment):
 
 ```markdown
-## 🧪 QA report — <branch>
-
-Ran on a fresh devbox (`<workspace>`) against this branch. Watch URL was <noVNC url>.
+QA'd on a fresh devbox (`<workspace>`) against this branch. Live browser watch URL: <noVNC url>.
 
 | # | Criterion | Result | Proof |
 |---|---|---|---|
@@ -100,16 +108,19 @@ Ran on a fresh devbox (`<workspace>`) against this branch. Watch URL was <noVNC 
 | AC3 | <statement> | ✅ | API transcript below |
 | AC4 | <statement> | ❌ → fixed in <sha> → ✅ | SQL below |
 
-### AC3 — API transcript
+<details><summary>AC3 — API transcript</summary>
+
 <inline markdown transcript>
+</details>
 
-### AC4 — SQL
+<details><summary>AC4 — SQL</summary>
+
 <inline query + result>
+</details>
 
-> 📎 Visual proofs (screenshots/GIFs) are at `~/Downloads/qa-proofs/<branch>/` on <user>'s machine — drag-and-drop into this thread to attach.
+📎 Visual proofs (screenshots/GIFs) are at `~/Downloads/qa-proofs/<branch>/` on <user>'s machine — drag-and-drop into the description to attach.
 
-### Fixes made during QA
-- <sha> <message> (what failed, why, what changed)
+Fixes made during QA: <sha> <message> (what failed, why, what changed).
 ```
 
-For criteria that failed and were fixed: keep the failure visible in the table (`❌ → fixed in <sha> → ✅`) — the fix history is part of the QA value.
+For criteria that failed and were fixed: keep the failure visible in the table (`❌ → fixed in <sha> → ✅`) — the fix history is part of the QA value. The `<details>` blocks keep the description compact while preserving the full transcripts.
