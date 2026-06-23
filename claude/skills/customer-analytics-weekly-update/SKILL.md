@@ -68,7 +68,26 @@ Print a one-line trace so the user can see what was kept vs dropped:
 [ca-update] window 2026-06-01..2026-06-05 — 12 scoped PRs, kept 8, dropped 4 (2 test, 2 refactor)
 ```
 
-### Step 4: Mine PR bodies for detail
+### Step 4: Reconcile against the previous weekly update
+
+This skill keeps a copy of the **last update it drafted** at:
+
+```
+~/.claude/state/customer-analytics-weekly-update/last-update.md
+```
+
+It lives outside the versioned skill directory on purpose — it holds internal team-update text that must never be committed to a dotfiles (or any) git repo.
+
+Before writing, read that file (if it exists) and drop any kept PR whose capability was **already announced in it**. The weekly roundup is the consolidated record, so anything that already appeared in a prior _weekly_ update is old news — don't repeat it.
+
+Two subtleties:
+
+- **Ad-hoc Slack posts are not duplicates.** During the week Arthur often posts one-off "X is live!" heads-ups. Those are real-time pings, not the consolidated record, so rolling them into the weekly update is fine. Only skip items that were in a previous _weekly_ update (the file, or a prior "Update on what was shipped" post in the channel).
+- **Window overlap.** A weekly update posted on a Monday often sweeps in PRs merged that same afternoon. Those same PRs fall into the _next_ week's merge-date window, so without this reconciliation they'd be announced twice. The file is what catches that.
+
+If the file is missing (first run, or it was cleared), fall back to the channel's most recent "Update on what was shipped" post — it surfaces in the Step 6 lookback read anyway — and reconcile against that.
+
+### Step 5: Mine PR bodies for detail
 
 The value of the update is in the sub-bullets, which usually aren't in the title. Read each kept PR's `body` and pull out:
 - The user-facing capability (what someone can now do)
@@ -79,7 +98,21 @@ The value of the update is in the sub-bullets, which usually aren't in the title
 
 Do **not** invent detail. If the body is thin, keep the line to one sentence rather than padding it.
 
-### Step 5: Group thematically and write the update
+### Step 6: Match requesters to the shipped work and tag them
+
+Many of these features start as asks in the channel. Close the loop: when a kept item was explicitly requested, tag the requester so they know it shipped.
+
+1. **Look back two weeks, not one.** Read #project-customer-analytics from `since-date − 7 days` through now (a requester usually asks a few days to a couple of weeks before the work lands). Use the Slack read tool with `oldest` set to that earlier timestamp.
+2. **Match each kept item to request messages.** A match is someone asking for that specific capability (e.g. "would be cool to have a 'My accounts' quick option", "I'd like to default the view to my accounts").
+3. **Resolve the requester's user id** from the message (or via `slack_search_users`) and tag them with a real mention `<@USER_ID>` on that feature's line — e.g. `Saved accounts table views (cc <@U08SX510NNR> <@U02QPCBLNAX>)`. A real ping is the point here, so use `<@…>`, not plain-text `cc @Name`.
+4. **Confidence gate:**
+   - **High confidence** (they asked for that exact capability): include the tag in the draft.
+   - **Low confidence** (adjacent or partial — they asked for something related but not the same thing): do **not** auto-tag. Surface it in the preview as "possible tag, your call" and let Arthur decide.
+5. **Skip already-announced / already-credited.** If an item was dropped in Step 4 (already in a prior weekly update), there's nothing to tag. If you already tagged a requester for that exact item in an ad-hoc post during the week, re-tagging in the roundup is optional reinforcement — note it rather than assuming it's wanted.
+
+In the Step 8 preview, list the high-confidence tags inline and the low-confidence ones separately for approval.
+
+### Step 7: Group thematically and write the update
 
 Group the kept PRs into a few themed sections. The natural groups (from past updates) are **Features** and **Data consistency**, but let the actual work drive the headers — add or rename sections if the week's content calls for it. Within a section, lead each item with the capability name, then indent sub-bullets for detail.
 
@@ -100,7 +133,7 @@ The update is delivered through the Slack MCP (`slack_send_message_draft`), whic
 - **Bullets:** `- ` at the line start.
 - **Nested sub-bullets:** indent **four spaces** then `- `. The MCP renders a true nested list (Slack shows `•`, then `◦` for the child level).
 - **Links:** `[label](https://url)` or a bare URL.
-- **Mentions:** `cc @Name` passes through as plain text — it does NOT ping. To actually notify someone, resolve their ID with `slack_search_users` and use `<@USER_ID>`. Default to plain text unless Arthur asks for a real ping.
+- **Mentions:** `cc @Name` passes through as plain text — it does NOT ping. To actually notify someone, resolve their ID with `slack_search_users` and use `<@USER_ID>`. Default to plain text unless Arthur asks for a real ping. _Exception:_ requester tags from Step 6 should be real `<@USER_ID>` mentions — the whole point is to notify the person who asked.
 - Keep emoji minimal — only `:thread:` / `:ship:`-style markers if they add meaning. Don't decorate.
 
 ## Gold-standard example (Arthur's own update — standard markdown)
@@ -126,13 +159,14 @@ Mirror this structure, density, and voice:
 - Tags column shows Segments from Vitally and is filterable
 ```
 
-### Step 6: Preview, then draft to Slack
+### Step 8: Preview, then draft to Slack
 
-1. Show Arthur the full update **rendered** in chat, preceded by the kept/dropped trace from Step 3 and the list of included PR numbers + URLs, so he can spot-check coverage.
+1. Show Arthur the full update **rendered** in chat, preceded by the kept/dropped trace from Step 3 and the list of included PR numbers + URLs, so he can spot-check coverage. Include the high-confidence requester tags inline and any low-confidence tags separately for his call (Step 6).
 2. Ask him to approve or adjust. **Do not draft or send anything yet.**
 3. On approval, create a Slack **draft** in **#project-customer-analytics** (`C08GGECGJF4`) via `slack_send_message_draft`, passing the update as standard markdown. Return the channel link so Arthur does the final send from Slack himself.
    - If a `<channel>` argument was given, resolve its ID with `slack_search_channels` first and draft there instead.
    - If the call returns `draft_already_exists`, tell Arthur to delete the existing draft for that channel in Slack, then retry. Do not work around it.
+4. After the draft is created, save the drafted update text to `~/.claude/state/customer-analytics-weekly-update/last-update.md` (create the directory if needed, overwrite the previous contents). This is what next week's Step 4 reconciles against, so it stops the next update from repeating this week's news. Save the update text itself, not a link.
 
 This skill **only drafts — it never sends.** Arthur presses Send in Slack. Do not claim work that isn't backed by a merged PR in the window.
 
