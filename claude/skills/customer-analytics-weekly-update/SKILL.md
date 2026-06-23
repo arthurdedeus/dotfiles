@@ -87,6 +87,7 @@ Group the kept PRs into a few themed sections. The natural groups (from past upd
 - Terse, telegraphic, capability-first. Fragments are fine. No marketing prose, no "I'm excited to share".
 - Casual and concrete. Reference real surfaces and links (`/organization/billing/usage`), inline `:thread:` pointers, `(more in :thread:)`, `(screenshots)`, `cc @Person`.
 - Honest about state: surface the "for now" / "still figuring out" / "will run a backfill" caveats rather than hiding them.
+- **Don't mention feature-flag gating** (e.g. "gated by `customer-analytics-csp`", "with the flag on"). These updates are internal and the flags are enabled for everyone, so describe the behavior as shipped, not as conditional. Drop the flag from PR bodies when you mine them.
 - **No em-dashes.** Arthur never writes `—`. Where you'd reach for one, end the sentence with a period and start a new one, or use a comma. e.g. "Missing links show disabled. You can fill them in inline" — NOT "...show disabled — and you can...".
 - **No LLM tells or jargon.** Avoid the giveaways: em-dashes, "you can now", "seamless(ly)", "leverage", "robust", "powerful", "unlock", "delve", and "no more X" clichés. Name UI by what the user sees ("edit button", not "gear button"). Write plainly and concretely like the example below.
 
