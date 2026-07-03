@@ -1,6 +1,6 @@
 ---
 name: qa-devbox
-description: Use when a feature branch needs its QA phase run end-to-end on a fresh devbox — deriving acceptance criteria, provisioning a devbox for the working branch, wiring watchable browser automation (Playwright MCP over an SSH tunnel), seeding demo data, executing every criterion as a browser/API/DB scenario via subagents, fixing failures until all pass, and posting proof artifacts (screenshots, GIFs, API/SQL transcripts) to the PR or issue. Triggers: "run QA on this", "QA this branch/PR", "verify this feature on a devbox", "run the QA phase".
+description: Run a branch's full QA phase on a fresh devbox — derive acceptance criteria, provision the box, wire watchable Playwright automation, seed data, run each criterion (browser/API/DB) via subagents, fix failures, and post proof to the PR/issue. Triggers: "run QA on this", "QA this branch/PR", "verify on a devbox".
 argument-hint: [branch-or-pr] [extra context...]
 ---
 

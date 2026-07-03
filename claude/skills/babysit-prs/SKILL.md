@@ -1,6 +1,6 @@
 ---
 name: babysit-prs
-description: Use when you want to drive a PR toward merge-readiness hands-off — self-loops over CI, review discussions, and branch currency, acting on clear cases and deferring ambiguous ones. Orchestrates /fix-ci, /fix-migrations, and /resolve-conflicts. Terminates when CI is green (or only known-flaky), no actionable threads remain, and the branch is conflict-free.
+description: Drive a PR to merge-readiness hands-off — self-loops over CI, review threads, and branch currency, acting on clear cases and deferring ambiguous ones. Orchestrates /fix-ci, /fix-migrations, /resolve-conflicts. Stops when CI is green and no threads or conflicts remain.
 argument-hint: [pr-number-or-url]
 ---
 

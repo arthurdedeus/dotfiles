@@ -1,6 +1,6 @@
 ---
 name: tracking-tasks-in-obsidian
-description: Use at the start of any non-trivial, multi-step task (or once its scope is clear within the first few prompts), and again when making a significant decision, changing direction, hitting a milestone, or wrapping up. For keeping a living record of task context, choices, and rationale in Arthur's Obsidian vault (PARA folders + Kanban dashboard).
+description: Keep a living record of a non-trivial task's context, decisions, and rationale in Arthur's Obsidian vault (PARA + Kanban). Use at task start (once scope is clear) and at each significant decision, direction change, milestone, or wrap-up.
 argument-hint: [task title]
 ---
 

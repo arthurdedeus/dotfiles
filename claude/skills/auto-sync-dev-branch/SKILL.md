@@ -1,6 +1,6 @@
 ---
 name: auto-sync-dev-branch
-description: Use when asked to keep a checked-out branch synced with its remote and automatically restart the local PostHog dev stack (frontend/backend, plus migrations) whenever new commits land — e.g. "keep pulling this branch every 5 minutes and restart on changes", babysitting someone else's branch, or following an agent that pushes to a branch you have running locally.
+description: Keep a checked-out branch synced with its remote and auto-restart the local PostHog stack (frontend/backend + migrations) when new commits land. Use for "keep pulling and restart on changes" or babysitting a branch an agent pushes to.
 ---
 
 # auto-sync-dev-branch

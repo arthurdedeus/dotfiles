@@ -1,7 +1,6 @@
 ---
 name: posthog-docs-writer
-description: >
-  Write, edit, and review documentation for PostHog products following PostHog's exact style guide, MDX component library, and documentation patterns. Use this skill whenever you need to write PostHog docs pages, edit existing PostHog documentation, create changelog entries, write help text or UI copy for PostHog features, draft getting-started guides, troubleshooting pages, or any MDX content destined for posthog.com/docs. Also trigger when reviewing PostHog docs for style compliance, restructuring doc sections, creating doc snippets, or planning documentation for new PostHog features. This covers all PostHog documentation work including product docs, handbook entries, tutorials, and newsletter content that follows PostHog conventions.
+description: Write, edit, or review PostHog documentation (product docs, handbook, tutorials, changelog, UI copy, MDX for posthog.com/docs) following PostHog's style guide and MDX components. Use for any PostHog docs authoring, restructuring, or style-compliance review.
 ---
 
 # PostHog Docs Writer

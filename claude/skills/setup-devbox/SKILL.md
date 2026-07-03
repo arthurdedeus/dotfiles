@@ -1,6 +1,6 @@
 ---
 name: setup-devbox
-description: Use when you need a working PostHog environment on a devbox for a branch — "spin up a devbox for this branch", "provision a PostHog devbox with demo data", "get a working PostHog environment on a branch", "seed a devbox and sync flags", or any task that needs a running app stack with the Hedgebox demo org, seeded product accounts, and feature flags enabled before doing further work.
+description: Spin up a working PostHog devbox for a branch — running app stack with the Hedgebox demo org, seeded accounts, and feature flags enabled. Use for "provision a devbox", "seed a devbox", or any task needing a running stack before further work.
 argument-hint: [branch-or-pr] [name]
 ---
 
