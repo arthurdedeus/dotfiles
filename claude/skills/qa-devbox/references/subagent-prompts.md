@@ -4,7 +4,7 @@ Fill `<>` placeholders from the criterion. Every prompt ends by telling the suba
 
 ## Browser driver (sonnet, serialized)
 
-Used with native `mcp__devbox-browser__*` tools. If the session lacks them, send this same prompt through the bridge: `echo "<prompt>" | claude -p --model sonnet --allowedTools "mcp__devbox-browser__*"`.
+Drive the `mcp__devbox-browser__*` tools directly (load their schemas via ToolSearch if not already in-session). Browser scenarios are serialized, so run them from your orchestrator session rather than delegating.
 
 ```text
 You are executing one QA acceptance criterion against a PostHog devbox browser.

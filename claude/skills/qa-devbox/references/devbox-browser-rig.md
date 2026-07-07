@@ -94,7 +94,7 @@ setsid nohup env DISPLAY=:99 flox activate -- bash -c "npx -y @playwright/mcp@la
 sleep 15; ss -tln | grep ":8931" && tail -3 /tmp/pw-mcp-http.log' 2>/dev/null
 ```
 
-**The scenario browser is ephemeral by design**: the server launches it lazily per client session and closes it when the last client disconnects — each `claude -p` bridge call is a short-lived client, so the noVNC desktop looks empty between tasks (a bare SSE "holder" connection does NOT prevent this; tested). For an always-visible window the user can watch and use, launch a separate **viewer Chromium** with its own profile (no lock conflict with the MCP browser):
+**The scenario browser is ephemeral by design**: the server launches it lazily per client session and closes it when the last client disconnects, so the noVNC desktop can look empty between tool calls (a bare SSE "holder" connection does NOT prevent this; tested). For an always-visible window the user can watch and use, launch a separate **viewer Chromium** with its own profile (no lock conflict with the MCP browser):
 
 ```bash
 hogli devbox:exec -n <label> -- bash -lc 'CHROME=$(ls ~/.cache/ms-playwright/chromium-*/chrome-linux/chrome | head -1)
@@ -111,13 +111,16 @@ Notes:
 
 ## 5. SSH tunnel (local machine)
 
+Always include keepalive flags — a bare `ssh -fN -L` tunnel drops silently after a few minutes of idle, and the drop surfaces only as a mid-scenario "Unable to connect" from the browser tools (looks like a browser/code failure but isn't):
+
 ```bash
-ssh -fN -L 8931:localhost:8931 coder.<workspace>
+ssh -fN -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -o ExitOnForwardFailure=yes -L 8931:localhost:8931 coder.<workspace>
 ```
 
 - The `coder.*` SSH host pattern is written by `hogli devbox:setup` (ProxyCommand through the coder CLI).
 - Local port 8931 feeds the existing user-scope MCP registration. If 8931 is already tunneling another box, pick the next free port — but that needs its own registration (`claude mcp add --scope user --transport http devbox-browser-2 http://localhost:<port>/mcp`) and a session restart to load natively.
 - Kill a stale tunnel by PID: `lsof -nP -iTCP:8931 -sTCP:LISTEN` → `kill <pid>`.
+- **Re-establish on drop, don't debug the browser.** On "Unable to connect" or a failed `initialize` handshake mid-run, the tunnel died: confirm the box-side MCP server is still up (`ss -tln | grep :8931` on the box), then kill any stale local listener and reopen the tunnel (command above). Re-run the lost scenario — it was not a real failure.
 
 ## 6. Local MCP registration (one-time, already done)
 
@@ -137,10 +140,8 @@ curl -s --max-time 10 -X POST http://localhost:8931/mcp \
 # expect: serverInfo name "Playwright"
 
 # b) Tool availability in the current session
-# ToolSearch for "browser_navigate" — present → drive directly; absent → use the claude -p bridge:
-echo "Use the devbox-browser MCP tools to open https://example.com and reply with exactly TITLE=<page title>." \
-  | claude -p --model sonnet --allowedTools "mcp__devbox-browser__*"
-# expect: TITLE=Example Domain
+# ToolSearch for "browser_navigate" — present → drive directly. Absent → load the schemas via
+# ToolSearch (deferred tools), or restart the session to pick up the registration.
 ```
 
 ## Teardown / restart notes

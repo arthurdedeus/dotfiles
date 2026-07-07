@@ -140,7 +140,8 @@
   "enabledPlugins": {
     "superpowers@claude-plugins-official": true,
     "autoresearch@autoresearch": true,
-    "vercel@claude-plugins-official": true
+    "vercel@claude-plugins-official": true,
+    "ponytail@ponytail": true
   },
   "extraKnownMarketplaces": {
     "autoresearch": {
@@ -148,10 +149,17 @@
         "source": "github",
         "repo": "uditgoenka/autoresearch"
       }
+    },
+    "ponytail": {
+      "source": {
+        "source": "git",
+        "url": "https://github.com/DietrichGebert/ponytail.git"
+      }
     }
   },
   "alwaysThinkingEnabled": true,
-  "effortLevel": "high",
+  "effortLevel": "xhigh",
+  "tui": "fullscreen",
   "theme": "dark-ansi",
   "editorMode": "vim",
   "preferredNotifChannel": "terminal_bell",

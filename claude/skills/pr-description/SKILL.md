@@ -53,6 +53,8 @@ Based on the diff, determine:
 
 **Tone: terse, direct, telegraphic.** Fragments are fine. The reviewer can read the diff — don't restate it. Avoid prose paragraphs anywhere. If you're tempted to add context, framework, or motivation, cut it. The PR description is a pointer to the diff, not a summary of it.
 
+**NEVER mention competitors.** Do not name competitor products (Attio, Amplitude, Mixpanel, Heap, June, LaunchDarkly, Statsig, …) anywhere in the title or description — not even as design inspiration ("Attio-style select"). The repo is public; describe the behavior in PostHog's own terms instead.
+
 Fill in the template sections, keeping all HTML comments in place:
 
 - **Problem**: 1 short declarative sentence stating the bare need or bug. Not a paragraph. Not "We're building X for users who…". Just "There is no way to review account notes." style. Place the `Closes` line from Step 3 below the template's comments.

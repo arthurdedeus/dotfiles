@@ -7,6 +7,11 @@
 // custom settings, run `zed: open default settings` from the
 // command palette (cmd-shift-p / ctrl-shift-p)
 {
+  "agent_servers": {
+    "claude-acp": {
+      "type": "registry"
+    }
+  },
   "project_panel": {
     "dock": "left"
   },
@@ -140,7 +145,7 @@
       ]
     },
     "Python": {
-      "language_servers": ["ty", "!basedpyright", "..."]
+      "language_servers": ["pyright", "ty", "!basedpyright"]
     }
   },
   "lsp": {
@@ -167,7 +172,10 @@
     "pyright": {
       "settings": {
         "python": {
-          "pythonPath": ".venv/bin/python"
+          "pythonPath": ".venv/bin/python",
+          "analysis": {
+            "autoImportCompletions": true
+          }
         }
       }
     },
