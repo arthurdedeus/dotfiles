@@ -1,7 +1,7 @@
 ---
 name: babysit-prs
-description: Drive a PR to merge-readiness hands-off — self-loops over CI, review threads, and branch currency, acting on clear cases and deferring ambiguous ones. Requests an automated review via the reviewhog label (opt out with --no-reviewhog). Orchestrates /fix-ci, /fix-migrations, /resolve-conflicts. Stops when every review thread is resolved and every CI check is green.
-argument-hint: [pr-number-or-url] [--no-reviewhog]
+description: Drive a PR to merge-readiness hands-off — self-loops over CI, review threads, and branch currency, acting on clear cases and deferring ambiguous ones. Requests an automated review via the stamphog label (opt out with --no-stamphog). Orchestrates /fix-ci, /fix-migrations, /resolve-conflicts. Stops when every review thread is resolved and every CI check is green.
+argument-hint: [pr-number-or-url] [--no-stamphog]
 ---
 
 # Babysit PRs
@@ -9,7 +9,7 @@ argument-hint: [pr-number-or-url] [--no-reviewhog]
 Self-looping skill that babysits a PR until it is ready to merge. Each
 pass keeps CI green, the branch current with its base, and review
 discussions triaged. Requests an automated review by adding the
-`reviewhog` label unless `--no-reviewhog` is passed. Acts autonomously
+`stamphog` label unless `--no-stamphog` is passed. Acts autonomously
 on clear cases; defers anything
 that needs human judgement. Delegates the heavy lifting to existing
 skills (`/fix-ci`, `/fix-migrations`, `/resolve-conflicts`).
@@ -23,7 +23,7 @@ inlining their logic.
 
 - `[pr-number-or-url]` — the PR to babysit; defaults to the current
   branch's PR.
-- `--no-reviewhog` — skip adding the `reviewhog` label (Step 1b).
+- `--no-stamphog` — skip adding the `stamphog` label (Step 1b).
   Default is to add it.
 
 ## Done state — terminate the loop
@@ -34,7 +34,7 @@ inlining their logic.
   until they pass (see Step 4), they are never waved through.
 - Every review thread is resolved (`isResolved == true`). Addressed
   means a code change or an explicit reply, then the thread resolved.
-- If the `reviewhog` label was added this session, its review has
+- If the `stamphog` label was added this session, its review has
   arrived and its threads are handled like any other.
 - The branch is conflict-free and current with its base.
 
@@ -116,24 +116,24 @@ If no PR exists for the current branch, ask the user (via
 `AskUserQuestion`) whether to supply a PR number/URL, open one with
 `gh pr create`, or cancel. Only proceed once they choose.
 
-### Step 1b: Request automated review (skip with `--no-reviewhog`)
+### Step 1b: Request automated review (skip with `--no-stamphog`)
 
-On the first pass only, unless `--no-reviewhog` was passed:
+On the first pass only, unless `--no-stamphog` was passed:
 
 ```bash
 gh pr view <pr_number> --json labels,reviews
 ```
 
-Add the `reviewhog` label if **all** of: the label exists in the repo,
-the PR doesn't already carry it, and reviewhog hasn't already reviewed
+Add the `stamphog` label if **all** of: the label exists in the repo,
+the PR doesn't already carry it, and stamphog hasn't already reviewed
 the PR (no review or thread authored by it). Never re-add a label a
 human removed.
 
 ```bash
-gh pr edit <pr_number> --add-label reviewhog
+gh pr edit <pr_number> --add-label stamphog
 ```
 
-If you added it, the loop is not merge-ready until the reviewhog review
+If you added it, the loop is not merge-ready until the stamphog review
 lands and its threads are handled (Step 3). If no review arrives after
 ~30 minutes of looping, note it in the summary as deferred and stop
 waiting on it.
@@ -250,7 +250,7 @@ back to `git push origin <branch>`. Don't loop on `gt submit` retries.
 Re-evaluate the done-state:
 
 - **Met** → print the final summary and **terminate**.
-- **Not met** (CI still pending or re-running, a requested reviewhog
+- **Not met** (CI still pending or re-running, a requested stamphog
   review not yet arrived, unresolved threads, or more autonomous work
   expected on the next pass) → schedule the next pass with
   `ScheduleWakeup` and stop this turn. Pick the delay by what
@@ -278,7 +278,7 @@ one-line reason underneath.
 - Merge or rebase conflicts that need a human decision.
 - Genuine CI failures `/fix-ci` cannot resolve.
 - Flaky checks still red after 3 re-runs.
-- A requested reviewhog review that never arrives (~30 min).
+- A requested stamphog review that never arrives (~30 min).
 
 ## Dependencies
 
