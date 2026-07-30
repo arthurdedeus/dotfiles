@@ -1,14 +1,16 @@
 ---
 name: babysit-prs
-description: Drive a PR to merge-readiness hands-off — self-loops over CI, review threads, and branch currency, acting on clear cases and deferring ambiguous ones. Orchestrates /fix-ci, /fix-migrations, /resolve-conflicts. Stops when CI is green and no threads or conflicts remain.
-argument-hint: [pr-number-or-url]
+description: Drive a PR to merge-readiness hands-off — self-loops over CI, review threads, and branch currency, acting on clear cases and deferring ambiguous ones. Requests an automated review via the reviewhog label (opt out with --no-reviewhog). Orchestrates /fix-ci, /fix-migrations, /resolve-conflicts. Stops when every review thread is resolved and every CI check is green.
+argument-hint: [pr-number-or-url] [--no-reviewhog]
 ---
 
 # Babysit PRs
 
 Self-looping skill that babysits a PR until it is ready to merge. Each
 pass keeps CI green, the branch current with its base, and review
-discussions triaged. Acts autonomously on clear cases; defers anything
+discussions triaged. Requests an automated review by adding the
+`reviewhog` label unless `--no-reviewhog` is passed. Acts autonomously
+on clear cases; defers anything
 that needs human judgement. Delegates the heavy lifting to existing
 skills (`/fix-ci`, `/fix-migrations`, `/resolve-conflicts`).
 
@@ -17,14 +19,29 @@ stamphog machinery), self-loops on its own rather than running one
 iteration per invocation, and orchestrates the other skills instead of
 inlining their logic.
 
+## Arguments
+
+- `[pr-number-or-url]` — the PR to babysit; defaults to the current
+  branch's PR.
+- `--no-reviewhog` — skip adding the `reviewhog` label (Step 1b).
+  Default is to add it.
+
 ## Done state — terminate the loop
 
-Stop and report when **all** of:
+**Merge-ready** means **all** of:
 
-- CI is green, or the only red checks are known-flaky (see Step 4).
-- No open **actionable** review threads remain (ambiguous ones are
-  deferred, not blocking).
+- Every CI check is green. No exceptions — flaky checks get re-run
+  until they pass (see Step 4), they are never waved through.
+- Every review thread is resolved (`isResolved == true`). Addressed
+  means a code change or an explicit reply, then the thread resolved.
+- If the `reviewhog` label was added this session, its review has
+  arrived and its threads are handled like any other.
 - The branch is conflict-free and current with its base.
+
+Stop and report **merge-ready** only when all of the above hold. If
+items were deferred to the user (ambiguous threads, unresolvable CI,
+needs-decision conflicts), stop too — but report **deferred-to-user**,
+never merge-ready.
 
 Also terminate immediately if the PR is `MERGED` or `CLOSED`, if a
 conflict needs a human decision, or if the user interrupts.
@@ -36,11 +53,18 @@ status) must begin with this header so a human can tell it was
 automated:
 
 ```markdown
-> 🤖 Automated comment written by Arthur robots
+> 🤖 Automated comment written by R2
 ```
 
 Put it as the first line of the body, before anything else. No
 exceptions — including for pushback and short replies.
+
+## Prose — use /orwell-writing
+
+Draft every posted comment and every message shown to the user with the
+`/orwell-writing` skill. Invoke it before writing the first comment or
+summary of the session, then apply its rules to all prose that follows.
+It does not apply to code, identifiers, or command syntax.
 
 ## Narration — keep the user in the loop
 
@@ -54,9 +78,9 @@ Format: `[babysit] <step> — <what and why>`
 [babysit] step 1 — resolving PR via gh pr view, base=master draft=false stacked=yes
 [babysit] step 2 — branch BEHIND, restacking onto refreshed master via graphite
 [babysit] step 3 — 3 unresolved threads: 1 bot-actionable, 1 nit, 1 ambiguous
-[babysit] step 4 — check "Backend tests" red; also red on recent master → flaky, not gating
+[babysit] step 4 — check "Backend tests" red; also red on recent master → flaky, re-running
 [babysit] step 5 — pushing fix via graphite (stacked branch)
-[babysit] done — CI green, 0 actionable threads, branch current → merge-ready
+[babysit] done — CI green, all threads resolved, branch current → merge-ready
 ```
 
 ## Workflow — one pass
@@ -91,6 +115,28 @@ summary.
 If no PR exists for the current branch, ask the user (via
 `AskUserQuestion`) whether to supply a PR number/URL, open one with
 `gh pr create`, or cancel. Only proceed once they choose.
+
+### Step 1b: Request automated review (skip with `--no-reviewhog`)
+
+On the first pass only, unless `--no-reviewhog` was passed:
+
+```bash
+gh pr view <pr_number> --json labels,reviews
+```
+
+Add the `reviewhog` label if **all** of: the label exists in the repo,
+the PR doesn't already carry it, and reviewhog hasn't already reviewed
+the PR (no review or thread authored by it). Never re-add a label a
+human removed.
+
+```bash
+gh pr edit <pr_number> --add-label reviewhog
+```
+
+If you added it, the loop is not merge-ready until the reviewhog review
+lands and its threads are handled (Step 3). If no review arrives after
+~30 minutes of looping, note it in the summary as deferred and stop
+waiting on it.
 
 ### Step 2: Keep the branch current with its base
 
@@ -165,7 +211,7 @@ gh api graphql -f query='mutation($t:ID!,$b:String!){addPullRequestReviewThreadR
 gh api graphql -f query='mutation($t:ID!){resolveReviewThread(input:{threadId:$t}){thread{id}}}' -F t=<id>
 ```
 
-### Step 4: Check CI, fix genuine failures, ignore flake
+### Step 4: Check CI, fix genuine failures, re-run flake
 
 ```bash
 gh pr checks <pr_number> --json name,state,bucket,link
@@ -179,9 +225,11 @@ acting:
   ```bash
   gh run list --branch <base> --workflow "<check>" -L 10 --json conclusion,headSha
   ```
-  If it's red on recent base commits too, treat as flaky: note it, do
-  **not** gate the done-state on it, and if a fix PR is obvious link it
-  — but do not dig.
+  If it's red on recent base commits too, treat as flaky: re-run it
+  (`gh run rerun <run_id> --failed`) and keep looping until it passes —
+  a flaky check still gates merge-ready. After 3 re-runs without a
+  pass, stop re-running, defer it to the user, and if a fix PR is
+  obvious link it — but do not dig.
 - **Genuine** — failing on this PR but green on base. Invoke `/fix-ci`,
   then push (Step 5). If `/fix-ci` cannot resolve it, add to the
   deferred list and surface it; do not loop on it.
@@ -202,9 +250,10 @@ back to `git push origin <branch>`. Don't loop on `gt submit` retries.
 Re-evaluate the done-state:
 
 - **Met** → print the final summary and **terminate**.
-- **Not met** (CI still pending, deferred items the user must handle, or
-  more autonomous work expected on the next pass) → schedule the next
-  pass with `ScheduleWakeup` and stop this turn. Pick the delay by what
+- **Not met** (CI still pending or re-running, a requested reviewhog
+  review not yet arrived, unresolved threads, or more autonomous work
+  expected on the next pass) → schedule the next pass with
+  `ScheduleWakeup` and stop this turn. Pick the delay by what
   you're waiting on: ~120–270s while polling pending CI (keeps the cache
   warm), longer if idle. Do not busy-wait inline.
 
@@ -228,6 +277,8 @@ one-line reason underneath.
 - Ambiguous review threads (architectural / broad / needs a decision).
 - Merge or rebase conflicts that need a human decision.
 - Genuine CI failures `/fix-ci` cannot resolve.
+- Flaky checks still red after 3 re-runs.
+- A requested reviewhog review that never arrives (~30 min).
 
 ## Dependencies
 
