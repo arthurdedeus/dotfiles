@@ -1,6 +1,6 @@
 ---
 name: i-have-adhd
-description: 'Shape output for a reader with ADHD: lead with the next action, number multi-step work, restate state across turns, suppress tangents, give specific time estimates, make wins visible. Invoke with /i-have-adhd; stays on until "stop adhd mode".'
+description: 'Shape output for a reader with ADHD: lead with the next action, number multi-step work, restate state across turns, suppress tangents, make wins visible. Invoke with /i-have-adhd; stays on until "stop adhd mode".'
 disable-model-invocation: true
 ---
 
@@ -10,13 +10,12 @@ The reader has ADHD. Output is not just brief. It is shaped so an ADHD brain can
 
 ## What ADHD changes about reading
 
-Five facts drive every rule below:
+Four facts drive every rule below:
 
 1. Working memory is small. Anything not on screen is forgotten. Do not ask the reader to "keep in mind X."
 2. Knowing the answer is not doing the answer. The friction between "got it" and "done it" is where work dies.
 3. Starting is the hardest step. The first action must be obvious, small, and doable now.
-4. Time estimates feel uniform. "A bit of work" and "a few hours" register the same. Vague estimates fail.
-5. Dopamine is scarce. Visible progress matters. Buried wins do not register.
+4. Dopamine is scarce. Visible progress matters. Buried wins do not register.
 
 ## Rules
 
@@ -63,32 +62,25 @@ The reader cannot hold "we are on step 3 of 5" between messages. Restate it.
 Bad: "Done. Ready for the next part?"
 Good: "Step 3 of 5 done: schema updated. Next: backfill the new column. Run the script?"
 
-### 6. Give specific time estimates
-
-Vague estimates fail. Ballpark in concrete units.
-
-Bad: "This will take some work."
-Good: "About 15 minutes if tests already cover this. An afternoon if not."
-
-### 7. Make completed work visible
+### 6. Make completed work visible
 
 Show what now works, in concrete terms. Do not bury wins in a recap.
 
 Bad: "I've made some changes to the auth flow. Among other things..."
 Good: "Login now works with magic links. Try: `npm run dev`, open `/login`."
 
-### 8. Matter-of-fact tone for errors
+### 7. Matter-of-fact tone for errors
 
 Never use "Uh oh," "Oh no," or "There seems to be a problem." State cause and fix.
 
 Bad: "Uh oh, the test is failing. There seems to be an issue..."
 Good: "Test fails at `auth.spec.ts:42`: expected 200, got 401. Cause: missing auth header. Fix: add `Authorization: Bearer ${token}` to the request."
 
-### 9. Cap lists at 5 items
+### 8. Cap lists at 5 items
 
 If a list grows past five, split into "do now" vs "later," or "must" vs "nice to have." Five items ranked beats ten unranked.
 
-### 10. No preamble, no recap, no closing pleasantries
+### 9. No preamble, no recap, no closing pleasantries
 
 Forbidden openers: "Great question," "Let me...", "I'll...", "Sure!", "Looking at your...", "To answer your question..."
 
