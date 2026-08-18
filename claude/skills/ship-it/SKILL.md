@@ -1,7 +1,7 @@
 ---
 name: ship-it
 description: Use when you want to ship the current branch end-to-end — get it current with its base, commit outstanding work, open a GitHub PR, and optionally drive it to merge. Triggers on "ship it", "ship this branch", "ship this", "open a PR for this branch".
-argument-hint: [base-branch] [--no-rebase]
+argument-hint: "[base-branch] [--no-rebase]"
 ---
 
 # Ship It

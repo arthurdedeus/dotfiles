@@ -1,7 +1,7 @@
 ---
 name: customer-analytics-weekly-update
 description: Use when Arthur wants a weekly shipped-work update for the customer analytics product, summarizing his merged PostHog PRs for the week and drafting it to the customer-analytics Slack channel
-argument-hint: [since-date] [until-date] [channel]
+argument-hint: "[since-date] [until-date] [channel]"
 ---
 
 Build a "what shipped this week" update for the **customer analytics** product from Arthur's merged PostHog PRs (Monday through today), then draft it to Slack for him to send.

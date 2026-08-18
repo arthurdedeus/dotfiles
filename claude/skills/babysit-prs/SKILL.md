@@ -1,7 +1,7 @@
 ---
 name: babysit-prs
 description: Drive a PR to merge-readiness hands-off — self-loops over CI, review threads, and branch currency, acting on clear cases and deferring ambiguous ones. Requests AI approval via the stamphog label (opt out with --no-stamphog). Orchestrates /fix-ci, /fix-migrations, /resolve-conflicts. Stops when every review thread is resolved and every CI check is green.
-argument-hint: [pr-number-or-url] [--no-stamphog]
+argument-hint: "[pr-number-or-url] [--no-stamphog]"
 ---
 
 # Babysit PRs

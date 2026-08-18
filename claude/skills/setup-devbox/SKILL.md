@@ -1,7 +1,7 @@
 ---
 name: setup-devbox
 description: Spin up a working PostHog devbox for a branch — running app stack with the Hedgebox demo org, seeded accounts, and feature flags enabled. Use for "provision a devbox", "seed a devbox", or any task needing a running stack before further work.
-argument-hint: [branch-or-pr] [name]
+argument-hint: "[branch-or-pr] [name]"
 ---
 
 # Set up a PostHog devbox

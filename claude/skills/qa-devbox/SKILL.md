@@ -1,7 +1,8 @@
 ---
 name: qa-devbox
-description: Run a branch's full QA phase on a fresh devbox — derive acceptance criteria, provision the box, wire watchable Playwright automation, seed data, run each criterion (browser/API/DB) via subagents, fix failures, and post proof to the PR/issue. Triggers: "run QA on this", "QA this branch/PR", "verify on a devbox".
-argument-hint: [branch-or-pr] [extra context...]
+description: >-
+  Run a branch's full QA phase on a fresh devbox — derive acceptance criteria, provision the box, wire watchable Playwright automation, seed data, run each criterion (browser/API/DB) via subagents, fix failures, and post proof to the PR/issue. Triggers: "run QA on this", "QA this branch/PR", "verify on a devbox".
+argument-hint: "[branch-or-pr] [extra context...]"
 ---
 
 # QA on a devbox
