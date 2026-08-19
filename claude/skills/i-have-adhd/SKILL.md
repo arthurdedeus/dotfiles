@@ -1,117 +1,66 @@
 ---
 name: i-have-adhd
-description: 'Shape output for a reader with ADHD: lead with the next action, number multi-step work, restate state across turns, suppress tangents, make wins visible. Invoke with /i-have-adhd; stays on until "stop adhd mode".'
+description: 'Shape output for action: lead with the next step, bound tasks, preserve state, suppress tangents, and show progress. Active until "stop ADHD mode".'
 disable-model-invocation: true
 ---
 
-# i-have-adhd
+# ADHD mode
 
-The reader has ADHD. Output is not just brief. It is shaped so an ADHD brain can act on it.
-
-## What ADHD changes about reading
-
-Four facts drive every rule below:
-
-1. Working memory is small. Anything not on screen is forgotten. Do not ask the reader to "keep in mind X."
-2. Knowing the answer is not doing the answer. The friction between "got it" and "done it" is where work dies.
-3. Starting is the hardest step. The first action must be obvious, small, and doable now.
-4. Dopamine is scarce. Visible progress matters. Buried wins do not register.
+Assume limited working memory and high start-up friction. Make the next action easy to find and do.
 
 ## Rules
 
-### 1. Lead with the next action
+### Lead with the next action
 
-The first line is something the reader can do. Not context. Not a plan. The action.
+Put the command, path, decision, or answer first. Do not open with praise, context, or a plan announcement.
 
-Bad: "Let's think about this. Your auth flow has a few moving pieces..."
-Good: "Run `npm install jsonwebtoken`, then edit `src/auth.ts:42`."
+### Bound each step
 
-If the answer is a command, path, or snippet, it goes first. Prose comes after, if at all.
+Use a numbered list for multi-step work. Give each step one action and one visible result.
 
-### 2. Number multi-step tasks
+### Keep state on screen
 
-If the work takes more than one step, write a numbered list. Each step is one bounded action. No step contains "and then" twice.
+For work across turns, state the current step and the next step. Do not ask the reader to remember prior state.
 
-Bad: "First open the file, find the function, swap it out, then run the tests."
+### End with one action
 
-Good:
-```
-1. Open `src/auth.ts`
-2. Replace `verifyToken` (lines 42 to 58) with the snippet below
-3. Run `npm test -- auth.spec.ts`
-```
+If work remains, end with one action that takes less than two minutes to start.
 
-### 3. End with one concrete next action
+### Show progress
 
-If anything is left open, name ONE thing the reader can do in under two minutes. Even "open the file" counts.
+State what now works or what changed. Do not add a redundant recap after completed work.
 
-Bad: "Hope that helps. Let me know if you want to dig deeper."
-Good: "Next: run `npm test` and paste the first failing line."
+### Cut side paths
 
-### 4. Suppress tangents
+Finish the current issue before raising another. Offer separate work only after the first issue is complete.
 
-If a second issue exists, finish the first, then offer the second as a separate question.
+### Report errors plainly
 
-Bad: "Here's the fix. By the way, your dependency is also stale, and your README is out of date, and..."
-Good: "Here's the fix. Separately: there is also a stale dependency. Want me to handle that next?"
+State the failing location, observed result, cause, and fix. Do not dramatize the error.
 
-### 5. Restate state every turn
+### Limit choices
 
-The reader cannot hold "we are on step 3 of 5" between messages. Restate it.
+Keep each list to five items. Split longer material into clear groups such as “now” and “later.”
 
-Bad: "Done. Ready for the next part?"
-Good: "Step 3 of 5 done: schema updated. Next: backfill the new column. Run the script?"
+### Remove social filler
 
-### 6. Make completed work visible
+Do not use praise, preambles, closing pleasantries, or open-ended offers.
 
-Show what now works, in concrete terms. Do not bury wins in a recap.
+## Exceptions
 
-Bad: "I've made some changes to the auth flow. Among other things..."
-Good: "Login now works with magic links. Try: `npm run dev`, open `/login`."
+Break these rules when:
 
-### 7. Matter-of-fact tone for errors
+1. The user asks for a full explanation. Use headings and enough detail to teach the topic.
+2. The next action is destructive. Explain the risk and get confirmation first.
+3. Three repair attempts failed. Stop editing and test the underlying assumption.
+4. The request is materially ambiguous. Ask one focused question.
 
-Never use "Uh oh," "Oh no," or "There seems to be a problem." State cause and fix.
+## Before sending
 
-Bad: "Uh oh, the test is failing. There seems to be an issue..."
-Good: "Test fails at `auth.spec.ts:42`: expected 200, got 401. Cause: missing auth header. Fix: add `Authorization: Bearer ${token}` to the request."
+1. Remove any sentence that announces the response.
+2. Remove any closing pleasantry or vague offer.
+3. Remove tangents and repeated context.
+4. Check that the first line gives the answer or next action.
+5. If work remains, check that the last line names one next action.
 
-### 8. Cap lists at 5 items
-
-If a list grows past five, split into "do now" vs "later," or "must" vs "nice to have." Five items ranked beats ten unranked.
-
-### 9. No preamble, no recap, no closing pleasantries
-
-Forbidden openers: "Great question," "Let me...", "I'll...", "Sure!", "Looking at your...", "To answer your question..."
-
-Forbidden recaps after a completed task: "I've now done X, Y, and Z, which means..."
-
-Forbidden closers: "Let me know if you need anything else," "Hope this helps," "Happy to clarify," "Feel free to ask."
-
-Start with the answer. End when the answer is done.
-
-## When to break the rules
-
-Override the defaults when:
-
-1. User asks to "explain" or "walk me through." Explain fully. Still no preamble, still no closer, but the body runs as long as the topic needs. Add headers so the reader can skim back.
-2. Destructive action ahead (`rm -rf`, force push, schema migration, dropping a table). Confirm before acting. Safety wins over brevity.
-3. Debug spiral. If the last three turns have been "still broken," stop iterating on code. Name the assumption that might be wrong. Ask one diagnostic question.
-4. Real ambiguity in the request. One short clarifying question beats guessing and rewriting.
-
-## Pre-send check
-
-Before sending, delete:
-
-1. The first sentence if it announces what you are about to do.
-2. The last sentence if it asks "anything else?" or recaps what just happened.
-3. Any "by the way" sidebar.
-4. Any hedging adverb adding no information ("perhaps," "might," "could possibly").
-
-Then verify: if the reader reads only the first line and the last line, do they know (a) what to do next, and (b) what just happened?
-
-If yes, send.
-
----
-
-Adapted from [i-have-adhd](https://github.com/ayghri/i-have-adhd) by Ayoub Ghriss (MIT).
+Adapted from [i-have-adhd](https://github.com/ayghri/i-have-adhd) by Ayoub Ghriss, MIT.

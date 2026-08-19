@@ -1,105 +1,76 @@
 ---
 name: handoff-babysit
-description: Hand off babysitting the current PR to a PostHog Code cloud task so it keeps running after the laptop closes. Use when a PR is opened/reviewed and you want it driven to merge-readiness independently — "hand this off", "babysit in the cloud", "keep this PR green while I'm away".
-argument-hint: [pr-number-or-url]
+description: Start a PostHog Code cloud task that drives a pull request to merge-readiness after the local session ends.
+argument-hint: "[pr-number-or-url]"
 ---
 
-# Handoff babysit to a cloud task
+# Hand off pull request babysitting
 
-Creates a PostHog Code **cloud** task (runs in PostHog's sandbox,
-independent of this machine) that babysits a PR to merge-readiness:
-CI green, review threads triaged, branch current with base. The cloud
-agent does NOT merge.
+Create one cloud task, start it, return its URL, and stop. The cloud agent must not merge or enter a queue.
 
-Unlike `/babysit-prs` (which loops locally), this skill only creates and
-starts the task, prints its URL, and terminates.
+## 1. Resolve the pull request
 
-## Step 1: Resolve the PR
-
-If `$ARGUMENTS` is a PR number or URL, use it; otherwise the current
-branch's PR:
+Use the argument or current branch. Read:
 
 ```bash
-gh pr view [<arg>] --json number,title,url,headRefName,baseRefName,state,isDraft
+gh pr view [<argument>] --json number,title,url,headRefName,baseRefName,state,isDraft
 gh repo view --json owner,name
 ```
 
-- `MERGED`/`CLOSED` → abort, nothing to babysit.
-- No PR → abort and tell the user to open one first (or use `/ship-it`).
-- Detect stack membership (`gt log short`): remember whether the branch
-  has a parent other than trunk or has children — it goes into the
-  prompt below.
+Stop if the pull request is missing, merged, or closed. Record whether Graphite tracks the branch.
 
-## Step 2: Get the API key
+## 2. Get the API key
 
-Try in order — env var, 1Password, macOS Keychain:
+Try the environment, then approved local secret stores:
 
 ```bash
 KEY="${POSTHOG_PERSONAL_API_KEY:-$(op read 'op://Private/PostHog personal API key/credential' 2>/dev/null)}"
 KEY="${KEY:-$(security find-generic-password -s posthog-personal-api-key -w 2>/dev/null)}"
 ```
 
-The 1Password read may pop a biometric prompt; in a headless session it
-fails silently and the Keychain fallback covers it.
+If no key exists, ask the user to create one with the `task` scope. Do not print, log, or place the key in command history.
 
-All empty → abort and tell the user to create a personal API key with
-the `task` scope and store it in either place:
+## 3. Create the task
 
-```bash
-op item create --category "API Credential" --title "PostHog personal API key" --vault Private credential='<key>'
-security add-generic-password -a "$USER" -s posthog-personal-api-key -w '<key>' -U
-```
+POST to `https://us.posthog.com/api/projects/2/tasks/` with the bearer key.
 
-## Step 3: Create the task
+Set:
 
-`POST https://us.posthog.com/api/projects/2/tasks/` with
-`Authorization: Bearer $KEY`, body:
-
-- `title`: `Babysit PR #<number>: <pr title>`
+- `title`: `Babysit PR #<number>: <title>`
 - `repository`: `<owner>/<repo>`
-- `description`: the prompt below, with placeholders filled in.
-
-The cloud agent has the repo's skills (`/debugging-ci-failures`, ...)
-but NOT this machine's personal skills, so the prompt is self-contained:
+- `description`: the prompt below
 
 ```markdown
-Babysit <pr_url> (branch `<headRefName>`, base `<baseRefName>`, draft: <isDraft>, stacked: <yes/no>) until it is merge-ready. Loop: check state, act on clear cases, wait for CI, repeat. Do NOT merge the PR.
+Drive <pr-url> to merge-readiness. Do not merge, enable auto-merge, or submit it to a queue.
 
-Done when ALL hold — then post a summary comment on the PR and finish:
-- CI green, or the only red checks also fail on recent base-branch runs (flaky — note them, don't gate on them).
-- No open actionable review threads (ambiguous ones deferred, listed in the summary).
-- Branch conflict-free and current with base.
-Terminate immediately if the PR gets merged or closed.
+Context: head `<head>`, base `<base>`, draft `<draft>`, Graphite stack `<stacked>`.
+
+Done only when every required CI check is green, every review thread is resolved, and the branch is current and conflict-free.
 
 Each pass:
-1. **Branch currency**: if GitHub reports CONFLICTING/DIRTY/BEHIND, rebase onto latest base. Resolve mechanical conflicts; if both sides changed the same logical lines with different intent, stop and report — don't guess.
-2. **Review threads**: read via GraphQL `reviewThreads` (REST lacks `isResolved`); skip resolved/outdated. Bot-authored + clear localized fix → apply, push, reply with the SHA, resolve the thread. Bot-authored but wrong/out-of-scope → reply one-line pushback, resolve. Ambiguous/architectural → leave unresolved, list in summary. Author comments on a draft PR are directives — apply them; on a non-draft PR leave them for the human.
-3. **CI**: for each failing check, compare against recent base-branch runs of the same workflow. Red on base too → flaky, skip. Genuine → diagnose with the repo's /debugging-ci-failures skill, fix, push. If unfixable after a real attempt, defer and list it.
-4. Push fixes to the PR branch. <if stacked: "This branch is part of a Graphite stack — do NOT force-push or rebase it yourself; if it needs a restack, stop and report instead.">
+1. Refresh PR state. Stop if it is merged or closed.
+2. Update the branch safely. Use repository conflict and stack instructions. Defer intent conflicts.
+3. Read review threads through GraphQL. Skip resolved or outdated threads.
+4. Fix clear bot findings. Push back on incorrect findings. Defer human or architectural decisions.
+5. Diagnose genuine CI failures with repository skills. Rerun confirmed flakes, but do not waive red checks.
+6. Batch verified fixes before pushing.
 
-Every comment you post must start with this exact line:
+Every posted comment starts with:
 > 🤖 Automated comment written by Arthur robots
 
-Follow the repo's CLAUDE.md commit conventions. Batch commits before pushing — each push burns CI credits.
+Post a final summary with checks, threads, branch state, fixes, and deferred items. Follow repository commit and public-data rules.
 ```
 
-## Step 4: Start a cloud run
+For a Graphite stack, tell the cloud agent not to rebase or force-push without stack-aware tooling.
 
-```bash
-curl -sS -X POST https://us.posthog.com/api/projects/2/tasks/<task_id>/run/ \
-  -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" \
-  -d '{"branch": "<headRefName>"}'
-```
+## 4. Start and verify
 
-Verify the response's `latest_run` has `environment: "cloud"` and status
-`queued` or `in_progress`. A 429 means the team is over its posthog_code
-usage limit — report and stop.
+POST to `/api/projects/2/tasks/<task-id>/run/` with the head branch.
 
-## Step 5: Report and terminate
+Verify that `latest_run.environment` is `cloud` and status is `queued` or `in_progress`. Report rate limits or API errors without retry loops.
 
-Print one line and stop — no polling, the whole point is that it runs
-without this session:
+## 5. Return
 
-```
-[handoff] PR #<n> → cloud task <slug> queued — https://us.posthog.com/project/2/tasks/<task_id>
+```text
+[handoff] PR #<number> → cloud task <slug> queued — https://us.posthog.com/project/2/tasks/<task-id>
 ```

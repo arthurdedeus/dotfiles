@@ -1,80 +1,217 @@
 ---
 name: setup-devbox
-description: Spin up a working PostHog devbox for a branch — running app stack with the Hedgebox demo org, seeded accounts, and feature flags enabled. Use for "provision a devbox", "seed a devbox", or any task needing a running stack before further work.
+description: Provision one focused PostHog devbox for a branch with only the services, flags, and seed data required by its test criteria.
 argument-hint: "[branch-or-pr] [name]"
 ---
 
-# Set up a PostHog devbox
+# Set up a focused PostHog devbox
 
-Provisions a devbox for a branch and leaves you with a running PostHog app stack: demo data seeded, product accounts seeded, feature flags synced and enabled, backend restarted so it all reflects your branch. Standalone — run it on its own to get a working environment, or invoke it from another skill (e.g. `qa-devbox`) as the provisioning step.
+Treat each devbox as one feature test environment. Do not build an all-purpose box.
 
-**Stop-and-ask rule:** if provisioning keeps failing in a way that suggests the box or branch is fundamentally wrong (unwinnable prebuild pollution, missing branch, repeated migration corruption) — stop and tell the user what you found rather than burning hours.
+Read the repository's `.agents/skills/setting-up-devbox/SKILL.md` first. Use `bin/hogli devbox:*` as the supported control interface.
 
-## Phase 0 — Resolve branch & box
+## 1. Define the test needs
 
-1. Resolve the working branch (argument, or current `git branch --show-current`).
-2. Derive the box label `<label>` — argument, or a slug from the branch name. (A caller may pass an explicit name, e.g. `qa-<slug>`.)
-3. Check the branch exists on `origin` (`git ls-remote --heads origin <branch>`). The devbox checks out from origin. If it isn't pushed: ask the user whether to push it, or fall back to `hogli devbox:sync` mirroring (mutagen — seconds per change, no pushes; box must have the same branch checked out).
+Before starting the box, list:
 
-## Phase 1 — Provision (milestone: BOX UP)
+- Feature and acceptance criteria.
+- UI routes and APIs under test.
+- Required databases and background jobs.
+- Required feature flags.
+- Smallest useful fixture set.
 
-```bash
-hogli devbox:start -n <label> --start-app    # run in background, takes minutes
-```
+Every service and fixture must support one criterion. Remove anything without a named use.
 
-When it's up, put the branch on it (the AMI ships `~/posthog` on master):
+## 2. Resolve the target
 
-```bash
-hogli devbox:exec -n <label> -- bash -lc 'cd ~/posthog && git fetch origin <branch> && git checkout <branch>'
-```
+1. Resolve the branch or pull request.
+2. Derive a short feature-specific box label.
+3. Detect the repository base branch.
+4. Check whether the branch exists on `origin`.
+5. If it does not exist, ask before pushing.
+6. Run `bin/hogli devbox:doctor` before changing authentication or network settings.
 
-If the branch changes lockfiles or migrations, also run (always under flox — bare `node`/`npx`/`pnpm` are not on the login-shell PATH):
+An expired Coder session needs user authentication. Do not loop on authentication failures.
 
-```bash
-hogli devbox:exec -n <label> -- bash -lc 'cd ~/posthog && flox activate -- bash -c "pnpm install --frozen-lockfile"'
-hogli devbox:exec -n <label> -- bash -lc 'cd ~/posthog && flox activate -- bash -c "python manage.py migrate"'
-```
+## 3. Start without the default app profile
 
-**Box-up milestone.** At this point the box is running and the branch is checked out. A caller that has other slow setup to do (e.g. installing a browser rig) can start it now, in parallel with Phase 2 below — Phase 2's `generate_demo_data` is one of the slowest steps in the run, so overlap anything you can with it.
-
-## Phase 2 — App stack + data
-
-> **Run management commands with the app env sourced**, or they default to `CLICKHOUSE_DATABASE=default` and fail with `Unknown table 'person'` on anything touching ClickHouse (incl. `generate_demo_data`). Canonical form on the box:
-> `flox activate -- bash -c "set -a; source .env.services 2>/dev/null; set +a; .flox/cache/venv/bin/python manage.py <cmd>"`
-> The Django interpreter is the flox venv at `.flox/cache/venv/bin/python` (a bare `python` may not be on PATH; `python3` is the system one, without Django). For multi-step setup, orchestrate via Python `call_command` to avoid shell-quoting hell. Many seed commands also need `--team-id` (discover the seeded team first) and depend on `generate_demo_data` having completed (groups/persons).
-
-1. Stack up (skip if `--start-app` already did it): `hogli devbox:exec -n <label> -- bash -lc 'cd ~/posthog && hogli up -d && hogli wait'`
-2. Demo data: run `generate_demo_data` (env-sourced form above) → creates the Hedgebox org with login **test@posthog.com / 12345678**. This populates **Postgres** (org, project, feature flags) and *then* backfills events into **ClickHouse** asynchronously.
-3. **Don't wait for ClickHouse.** The seed and flag-sync commands only need the Postgres objects — fire them in **parallel** as soon as `generate_demo_data` returns; the CH event backfill keeps running in the background. Gate *only* CH-dependent work (event-based insights, counts) on the backfill settling.
-   - **Seed accounts**: discover the command with `ls products/<product>/backend/management/commands/`, check `--help`, then run (env-sourced form above). For the `--team-id` these commands usually need, discover the seeded team first — `generate_demo_data` creates one project under the Hedgebox org: `hogli devbox:exec -n <label> -- bash -lc 'psql -h localhost -U posthog posthog -c "SELECT id, name FROM posthog_team ORDER BY id;"' 2>/dev/null` (the Hedgebox/Hogflix team is the one with a real project). Example (customer analytics): `seed_customer_analytics_accounts --team-id <team>`.
-   - **Sync feature flags**: `flox activate -- bash -c "python manage.py sync_feature_flags"` — adds and enables every flag from `frontend/src/lib/constants.tsx` across all projects, so the feature you care about is actually on.
-
-If either step hits a **DB error** (`relation ... does not exist`, `column ... does not exist`, `InconsistentMigrationHistory`), the box's schema is behind the branch — run migrations and retry:
+Start or create the box without launching every configured process:
 
 ```bash
-hogli devbox:exec -n <label> -- bash -lc 'cd ~/posthog && flox activate -- bash -c "set -a; source .env.services 2>/dev/null; set +a; .flox/cache/venv/bin/python manage.py migrate"'
+bin/hogli devbox:start -n <label> --no-start-app
 ```
 
-**`Unknown table 'person'` (or other unknown-CH-table errors) is NOT a broken ClickHouse** — it means the command ran without `.env.services`, so `CLICKHOUSE_DATABASE` defaulted to `default` instead of `posthog`. Re-run with the env sourced (above) and confirm tables exist in the `posthog` CH DB (`system.tables`) before reaching for `migrate_clickhouse` or recreating the box.
+Check out the target branch:
 
-## Phase 3 — Restart backend & verify
+```bash
+bin/hogli devbox:exec -n <label> -- bash -lc 'cd ~/posthog && git fetch origin <branch> && git checkout <branch>'
+```
 
-1. **Restart the backend** so freshly-synced flags and seeded data are actually live. A flag created or flipped *after* the web process started never reaches the server-rendered bootstrap until the worker reloads — `touch posthog/urls.py` triggers granian autoreload to re-read flag definitions. If the flags service itself is stale (briefly 401s with "API key invalid or expired" while HyperCache hydrates), restart `feature-flags`/`hypercache-server`.
-2. **App-is-your-branch check.** Confirm the running app actually serves your checkout, not a stale prebuild build: load a branch-unique route/element and confirm it renders (the DEBUG-banner git rev can be a stale cached value, so don't trust it alone). If it doesn't match your branch, fix it now — see the polluted-warm-prebuild gotcha.
-3. App smoke test: `http://localhost:8010` loads (the box's localhost). **Always `localhost:8010`** (dev proxy); never `172.17.0.1:8000` (granian direct → CSRF 403 on `/flags`, no feature flags).
+Install changed dependencies and run required migrations before starting the app.
 
-The box now serves your branch with demo data, seeded accounts, and flags enabled, logged-in-ready as **test@posthog.com / 12345678**.
+Do not fake migrations to bypass unexplained schema drift.
 
-## Gotchas (hard-won — read before debugging)
+## 4. Select only required services
 
-- **flox everything**: on the box, `node`/`npx`/`python`/`pnpm` exist only inside `flox activate -- bash -c "..."`. A "command not found" or a process that silently fails to spawn is almost always this.
-- **`devbox:exec` needs `bash -lc '...'`** and the Coder banner pollutes output — suppress with `2>/dev/null` on the local side; the real output comes last.
-- **Env-sourcing / `CLICKHOUSE_DATABASE`**: management commands touching ClickHouse must source `.env.services` (Phase 2 callout) or they hit the `default` CH DB.
-- **`Unknown table 'person'`** = env not sourced, not a broken ClickHouse (Phase 2).
-- **DB error → migrate** (Phase 2): `relation/column does not exist` or `InconsistentMigrationHistory` means the box schema is behind the branch.
-- **App URL on the box is `localhost:8010`**, login `test@posthog.com / 12345678` (Hedgebox is the only seeded org with a real project).
-- **Polluted warm prebuild (serves the wrong branch).** A warm box can be snapshotted from another box that was *running* a different branch's app, so it serves that stale frontend (and reports its git rev in the DEBUG banner) even after `git checkout`. This survives `hogli down/up`, Vite/turbo cache clears, and browser cache clears. If the app won't reflect your branch after a clean rebuild, the prebuild is unwinnable in place — destroy and reprovision (or use a different pool / local `bin/start`). Don't sink hours clearing caches. (See the Phase 3 app-is-your-branch check — catch this early.)
-- **Stale in-process flag cache (flag enabled everywhere but the gated UI still won't render).** In `SELF_CAPTURE` dev the web process loads its **own** flag definitions once at startup; a flag created/flipped after the app started never reaches the server-rendered bootstrap. Fix: enable the flag in PG (active + 100% rollout), then reload the web worker (`touch posthog/urls.py`), then a fresh full page load — not client-side `override`/`reloadFeatureFlags`, the staleness is server-side (Phase 3).
-- **Never `pkill -f`/`pgrep -f` with a pattern that appears in your own command line** through `devbox:exec` — it kills your own SSH session (exit 255). Verify daemons with `ss -tln`/`curl`, build patterns from shell variables, and prefer killing by PID from `ss -tlnp`.
-- **Daemons die with the box** (stop/restart): the app stack must be re-upped. The repo, installed packages, and any persistent browser profile survive on disk.
-- **Stop the box when done** (it bills while running): `hogli devbox:stop -n <label>` (disk persists).
+Use the repository's intent tooling on the box:
+
+```bash
+bin/hogli dev:intents
+bin/hogli dev:explain <intent>
+bin/hogli dev:apply <intent> [--include <unit>] [--exclude <unit>] [--skip-autostart <unit>]
+```
+
+Choose the closest intent, then remove units that no acceptance criterion needs. Inspect the generated plan before startup.
+
+For a basic customer analytics account or settings test, keep the web app, required databases, migrations, feature flags, and HyperCache. Do not add ingestion, Temporal, LLM, or integration services by default.
+
+Add services only when the criterion needs them:
+
+| Feature under test | Additional capability |
+| --- | --- |
+| Dashboard metrics, activity, or usage | ClickHouse data and completed ClickHouse migrations |
+| New captured events | Capture and ingestion pipeline |
+| Calendar, workflows, scheduled jobs | Matching Temporal or worker processes |
+| Max or AI behavior | LLM gateway and its approved test key |
+| External integration | Only that integration's worker, fixture, and tunnel |
+
+Start the selected profile detached:
+
+```bash
+bin/hogli up -d -y
+bin/hogli services:ready -y
+```
+
+Check readiness for `backend`, `frontend`, `feature-flags`, `hypercache-server`, and each criterion-specific unit. Do not chase unrelated stopped units.
+
+## 5. Run Django commands safely
+
+Use Flox and `.env.services`:
+
+```bash
+flox activate -- bash -c 'set -a; source .env.services 2>/dev/null; set +a; .flox/cache/venv/bin/python manage.py <command>'
+```
+
+`Unknown table 'person'` usually means `.env.services` was not loaded. Confirm the target ClickHouse database before changing schema state.
+
+## 6. Seed only required data
+
+Reuse a suitable test project when one exists.
+
+The default `generate_demo_data` dataset with 500 clusters is acceptable. Use it when creating the standard Hedgebox project.
+
+Do not generate more data unless the acceptance criteria need more groups than the database contains. In that case, rerun `generate_demo_data` with a larger `--n-clusters` value.
+
+Wait for ClickHouse backfill only when a criterion reads event data.
+
+## 7. Seed customer analytics accounts
+
+Customer analytics accounts come from group analytics at group type index `0`.
+
+1. Confirm the target team ID.
+2. Count index-0 groups in the persons database:
+
+Set `team_id` to the target team before running this through `manage.py shell`:
+
+```python
+from posthog.persons_db import persons_db_connection
+
+team_id = 1
+
+with persons_db_connection(writer=False) as connection, connection.cursor() as cursor:
+    cursor.execute(
+        "SELECT count(*) FROM posthog_group WHERE team_id = %s AND group_type_index = 0",
+        [team_id],
+    )
+    print(cursor.fetchone()[0])
+```
+
+Use the environment from section 5.
+
+3. If the count is too small, generate demo data with a larger `--n-clusters` value and count again.
+4. Run the account seed once the database contains enough groups:
+
+```bash
+python manage.py seed_customer_analytics_accounts \
+  --team-id <team-id> \
+  --limit <accounts-needed> \
+  --users <role-users-needed> \
+  --accounts-with-notes <accounts-needing-notes> \
+  --notes-per-account <notes-needed>
+```
+
+The command:
+
+- Creates accounts from index-0 groups.
+- Sets `account_group_type_index = 0`.
+- Creates only the requested role-user pool.
+- Adds notes only to the requested accounts.
+- Is safe to rerun.
+
+Use zero for users or notes when the criterion does not need them. Use `--limit` instead of converting every demo group.
+
+The command does not create support tickets, email threads, calendar meetings, workflows, or external integration data. Seed one invented fixture through that feature's real write path only when its criterion needs it.
+
+## 8. Configure customer analytics flags
+
+Run:
+
+```bash
+python manage.py sync_feature_flags
+```
+
+Do not substitute `sync_feature_flags_from_api`. It does not create the local `customer-analytics-roadmap` gate.
+
+Always enable `customer-analytics-roadmap` for customer analytics tests. Enable only the optional gate needed by the feature:
+
+- `customer-analytics-csp` for accounts, account tabs, feed, announcements, and account settings.
+- `customer-analytics-feature-requests` for feature requests.
+- `customer-analytics-journeys` for journeys.
+- `customer-profile-config-button` only when testing that control.
+
+Inspect `frontend/src/lib/constants.tsx` and the feature route before choosing flags. Disable unrelated customer analytics gates on the fresh box so hidden features do not affect the scenario.
+
+## 9. Refresh flag caches
+
+After changing flags, restart these processes in order:
+
+1. `hypercache-server`.
+2. `feature-flags`.
+3. `backend`.
+
+Use the available phrocs status and toggle tools. For each process:
+
+1. Read its current state.
+2. Stop it if running.
+3. Confirm it stopped.
+4. Start it.
+5. Wait for its readiness signal.
+
+Restart only these processes. Do not restart the full stack.
+
+Then hard-refresh the browser. Verify each required flag through the page's feature-flag client or `/flags` response before testing the route.
+
+## 10. Verify the focused environment
+
+1. Open `http://localhost:8010` from the box.
+2. Confirm a branch-specific route or element.
+3. Log in with the seeded test account.
+4. Verify exact fixture counts.
+5. Verify required flags are true and unrelated optional gates are false.
+6. Verify only required processes are running.
+
+If the box serves a stale prebuild after one clean restart, stop and reprovision. Do not spend repeated cycles clearing caches.
+
+## 11. Return the environment
+
+Report:
+
+- Box label, workspace, branch, and revision.
+- Acceptance criteria supported by the setup.
+- Running services and why each is needed.
+- Seed commands and resulting counts.
+- Enabled and disabled customer analytics flags.
+- App URL and login.
+- Stop command: `bin/hogli devbox:stop -n <label>`.
+
+Do not stop the box without asking when the user may still need it.

@@ -1,94 +1,46 @@
 ---
 name: resolve-conflicts
-description: Resolve git conflicts with AI-powered analysis, including mergiraf structural merging, lock file handling, and stacked PR duplicate detection.
-argument-hint: [--abort|--continue]
+description: Resolve conflicts from a rebase, merge, cherry-pick, or revert without guessing about intent.
+argument-hint: "[--abort|--continue]"
 ---
 
-# Resolve Git Conflicts
+# Resolve Git conflicts
 
-Resolve conflicts from any git operation (rebase, merge, cherry-pick, revert) with intelligent handling of lock files, migrations, mergiraf-supported languages, and stacked PR duplicates.
+Use structural tools for mechanical conflicts. Ask when both sides changed behavior with different intent.
 
-## Arguments (parsed from user input)
+## 1. Detect the operation
 
-- No arguments: detect context, resolve conflicts, continue the operation
-- `--abort`: abort the current operation
-- `--continue`: skip resolution, just run the appropriate continue command
-
-Example invocations:
-
-- `/resolve-conflicts` -- detect context, resolve conflicts, continue
-- `/resolve-conflicts --abort` -- abort current rebase/merge/cherry-pick/revert
-- `/resolve-conflicts --continue` -- continue without resolving (e.g., after manual edits)
-
-## Your Task
-
-### Step 1: Detect Context
-
-Run the status script:
+Run:
 
 ```bash
 ~/.claude/skills/resolve-conflicts/scripts/conflict-status.sh
-```
-
-This outputs tab-separated: `context\tprogress\tbranch`
-
-Parse the fields:
-
-- `context`: one of `rebase`, `merge`, `cherry-pick`, `revert`, `none`
-- `progress`: `current/total` for rebase (e.g., `3/12`), empty for other contexts
-- `branch`: the branch being worked on
-
-Check for unmerged files:
-
-```bash
 git diff --name-only --diff-filter=U
 ```
 
-**Route based on context, unmerged files, and arguments:**
+The status script returns `context`, `progress`, and `branch`.
 
-| Context | Unmerged files? | Argument | Action |
-| --- | --- | --- | --- |
-| none | n/a | `--abort` | Report "No operation in progress" and stop |
-| none | n/a | none/`--continue` | Report "No conflicts to resolve" and stop |
-| active | n/a | `--abort` | Run `git <context> --abort`, report "Aborted `<context>`. Back on `<branch>`.", and stop |
-| active | no | none/`--continue` | Run `git <context> --continue` (use `git commit --no-edit` for merge) |
-| active | yes | `--continue` | Run `git <context> --continue` (use `git commit --no-edit` for merge) |
-| active | yes | none | Go to Step 2 (Resolve Conflicts) |
+- `--abort`: abort the active operation and report the resulting branch.
+- `--continue`: run the matching continue command without editing.
+- No active operation: report that there is nothing to resolve.
+- Active operation with conflicts: continue below.
 
-### Step 1.5: Rule out an already-merged branch (rebase / cherry-pick of a multi-commit branch)
+Do not run `--continue` with unresolved files unless the user explicitly requested it.
 
-Before grinding through conflicts, check whether the branch's work is already on the base. A branch that was **squash-merged** into its base leaves its individual commits looking unmerged (squashing breaks patch-id matching), so a rebase replays them and conflicts on nearly every step — even though the base already contains the work, often in a *more refined* form. Finishing the rebase then re-applies duplicates and clobbers the base's refinements.
+## 2. Check for already-landed work
 
-Strong signals: conflicts on most/all rebase steps where **ours (the base)** is a superset of **theirs (the replayed commit)**; or the base content is already present on the base branch despite a real stage-1 base existing.
+When most replayed commits conflict, test whether the base already contains the branch through a squash merge.
 
-Identify which commits are genuinely new vs already landed (`BASE` = the branch you're rebasing onto / cherry-picking from, e.g. `master`):
+Compare branch files and behavior with the target base. Do not trust `git cherry` alone after squash merges.
 
-```bash
-MB=$(git merge-base HEAD "$BASE")
-git diff --name-only "$MB" HEAD | while read -r f; do
-  b=$(git rev-parse "$BASE:$f" 2>/dev/null || echo MISSING)
-  h=$(git rev-parse "HEAD:$f" 2>/dev/null)
-  if [ "$b" = "$h" ]; then echo "LANDED        $f"
-  elif [ "$b" = MISSING ]; then echo "NEW FILE      $f"
-  else git diff --numstat "$BASE" HEAD -- "$f" | awk -v f="$f" '{print ($1==0 ? "BASE-SUPERSET " : "DIVERGED      ") f}'; fi
-done
-```
+If most work already landed, stop. Show which commits remain unique and propose:
 
-Files identical to base, or where the branch only deletes (`numstat +0/-N` → base is a superset), are already landed. Files the branch *adds* are the genuinely new work; map them to commits with `git log --oneline "$MB"..HEAD -- <file>`. (`git cherry` is unreliable here — squash merges make it report everything as new.)
+1. Abort the current operation.
+2. Create a fresh branch from the base.
+3. Cherry-pick only the unique commits in order.
 
-If most commits are already landed, **stop and propose switching strategy** rather than finishing the rebase: abort, branch off the base fresh, and cherry-pick only the genuinely-new commits in chronological order:
+Get confirmation before switching strategies.
 
-```bash
-git rebase --abort   # or cherry-pick --abort
-git checkout -b <branch>-new "$BASE"
-git cherry-pick <new commits, oldest first>
-```
-
-Present the landed-vs-new breakdown and confirm with the user before switching.
-
-### Step 2: Resolve Conflicts
-
-#### 2a: Categorize Conflicts
+## 3. Categorize files
 
 Run:
 
@@ -96,162 +48,73 @@ Run:
 ~/.claude/skills/resolve-conflicts/scripts/categorize-conflicts.sh
 ```
 
-This outputs tab-separated lines: `category\tfile_path`
+Report lockfiles, generated files, migrations, structurally mergeable files, and other files.
 
-Report the categorization to the user, e.g.:
+## 4. Resolve mechanical files
 
-> **Conflicts (rebase step 3/12):**
->
-> - 1 lockfile: `package-lock.json`
-> - 2 mergiraf: `src/app.ts`, `src/utils.ts`
-> - 1 migration: `migrations/0042_add_column.py`
+### Lockfiles
 
-For non-rebase contexts, omit the step count:
+Resolve dependency manifests first. Choose one lockfile side only as a temporary seed, then regenerate with the repository's package manager.
 
-> **Conflicts (merge):**
+Prefer lockfile-only commands when available. Review churn before staging. Do not hand-edit lockfile conflict markers.
 
-#### 2b: Resolve by Category
+### Generated files
 
-Process conflicts in this order:
+Resolve their source files, run the repository generator, inspect the output, then stage it.
 
-**1. Lock files (`lockfile`)**
+Never hand-merge generated clients, schemas, or snapshots.
 
-Accept theirs to clear the conflict markers. The content doesn't matter since Step 3 regenerates lock files from the resolved dependency manifest, but always choosing theirs keeps the behavior deterministic:
+### Migration files
 
-```bash
-git checkout --theirs <file> && git add <file>
-```
+Use `fix-migrations` for numbering and dependency conflicts. If migration operations differ in intent, stop and ask.
 
-Track which lock files need regeneration (handled in Step 3).
+### Structurally mergeable files
 
-**Generated files (non-lockfile) — handle before mergiraf / AI analysis**
-
-Files generated from a source (e.g. `schema.json`, generated `schema.py`, `api.schemas.ts`/`api.ts`, generated MCP/SQL clients, `.ambr` snapshots) are categorized as `mergiraf` or `other`, but must **not** be hand-merged. Same principle as lock files: resolve the conflict in their **source** (the schema/serializer/types file — often it auto-merged cleanly), then regenerate, which overwrites the markers entirely, then stage:
-
-```bash
-<regen command, e.g. hogli build:schema, hogli build:openapi>
-git add <generated file>
-```
-
-If the source itself also conflicts, resolve it first (Step 2c), then regenerate. After regenerating, confirm the file has no markers and that the change you expected is present.
-
-**2. Migrations (`migration`)**
-
-Do not auto-resolve. Ask the user how to proceed for each migration file. Common options:
-
-- Accept theirs (`git checkout --theirs <file>`) — during merge/cherry-pick/revert this is the incoming branch; during rebase this is the commit being replayed (i.e., your branch)
-- Accept ours (`git checkout --ours <file>`) — during merge/cherry-pick/revert this is the current branch; during rebase this is the upstream branch you're rebasing onto
-- Manual resolution with your guidance
-
-**3. Mergiraf-supported files (`mergiraf`)**
-
-Run mergiraf as a second pass (it may have already run as a merge driver during the git operation itself, but sometimes conflicts remain). It is installed and configured as a git merge driver:
+Run:
 
 ```bash
 mergiraf solve -c <file>
 ```
 
-After running mergiraf, read the file and check for remaining conflict markers (`<<<<<<<`). If conflict markers remain, proceed with AI analysis (see Step 2c).
-
-If mergiraf reports it can't use the base (e.g. *"Cannot solve conflicts in diff2 style, merging from scratch"*) and the leftover markers show an **empty `||||||| BASE`** section, do not trust that empty base — git may still have a real merge base, and treating it as empty can misclassify a genuine conflict as a stacked-PR duplicate. Inspect the true three-way stages directly before deciding (stage 1 = base, 2 = ours, 3 = theirs):
+Then inspect remaining markers, duplicate declarations, dead references, and changed behavior. Do not trust an empty displayed base without checking Git's stages:
 
 ```bash
-git ls-files -u <file>     # confirms which stages exist
-git show :1:<file>         # base — git show :2: ours, :3: theirs
+git ls-files -u <file>
+git show :1:<file>
+git show :2:<file>
+git show :3:<file>
 ```
 
-If mergiraf fully resolves the file (no markers remain), skim for semantic issues beyond markers: dead references to removed identifiers, orphaned code blocks, or duplicated declarations. Mergiraf operates structurally but doesn't validate cross-reference integrity.
+## 5. Resolve semantic conflicts
 
-Stage the file:
+For each remaining hunk:
 
-```bash
-git add <file>
-```
+1. Read the base, ours, and theirs.
+2. Identify each side's intent.
+3. Keep both changes when they are independent.
+4. Auto-resolve only exact duplicates or a clearly superseded mechanical change.
+5. Ask when behavior, data, API, or product intent differs.
 
-**4. Other files (`other`)**
+Remember that ours and theirs reverse meaning during a rebase. Describe branches or commits, not only those labels.
 
-Read the file contents and resolve using AI analysis (see Step 2c).
+After editing, search for conflict markers and run focused tests before staging.
 
-#### 2c: AI Conflict Analysis
+## 6. Continue
 
-For conflicts that remain after mergiraf (or for `other` category files), read the file and analyze each conflict hunk. Conflict markers may appear in diff3 style (with a base section) or standard style (without). Handle both:
+When all conflicts are resolved:
 
-diff3 style (preferred, enabled via `merge.conflictStyle = diff3`):
+1. Remove only backup files created by the merge tool during this operation.
+2. Regenerate any lockfiles or generated files.
+3. Review staged changes.
+4. Run the matching command:
 
-```text
-<<<<<<< HEAD
-[head_code]
-||||||| base
-[base_code]
-=======
-[incoming_code]
->>>>>>> commit message
-```
+| Operation | Command |
+| --- | --- |
+| Rebase | `git rebase --continue` |
+| Merge | `git commit --no-edit` |
+| Cherry-pick | `git cherry-pick --continue` |
+| Revert | `git revert --continue` |
 
-Standard style (no base section):
+If another rebase step conflicts, repeat the workflow.
 
-```text
-<<<<<<< HEAD
-[head_code]
-=======
-[incoming_code]
->>>>>>> commit message
-```
-
-**Stacked PR duplicate detection:**
-
-When the base section is empty or contains substantially less code than both sides, this often indicates a stacked PR scenario where a sub-PR was merged, duplicating code that also exists in the feature branch.
-
-| Base | HEAD vs Incoming | Action |
-| --- | --- | --- |
-| Empty or missing code | >95% similar (after normalizing whitespace) | **Auto-resolve**: keep HEAD version, report to user |
-| Empty or missing code | 70-95% similar | **Ask user**: show both versions side-by-side, explain likely stacked PR context |
-| Empty or missing code | <70% similar | **Ask user**: true divergence, present both options |
-| Present | Both modified | **Ask user**: standard conflict, present analysis |
-
-**Repeated pattern conflicts** — When multiple hunks have the same structural conflict (e.g., the same rename on both sides across several reducers), it's tempting to batch-resolve them all the same way. Still present the pattern to the user and ask which side to pick before resolving. Getting it wrong multiplies the damage across all hunks.
-
-For auto-resolutions, always report clearly what was resolved and why:
-
-> Auto-resolved `src/feature.ts` hunk at line 42: stacked PR duplicate (HEAD and incoming are 98% similar with empty base). Kept HEAD version.
-
-For all other cases, present the conflict to the user with your analysis and recommendation, then apply their choice.
-
-After resolving all hunks in a file, stage it: `git add <file>`
-
-### Step 3: Continue
-
-After all conflicts are resolved and staged:
-
-1. Clean up `.orig` files left behind by merge tools (e.g., mergiraf):
-   ```bash
-   git diff --name-only --diff-filter=U HEAD 2>/dev/null; find . -name '*.orig' -newer .git/index -not -path './.git/*' -delete
-   ```
-   This removes any `.orig` backup files created during conflict resolution so they don't pollute the working tree or diff.
-3. If lock files were resolved, regenerate them now:
-   - `package-lock.json` -- `npm install`
-   - `pnpm-lock.yaml` -- `pnpm install`
-   - `yarn.lock` -- `yarn install`
-   - `bun.lockb` or `bun.lock` -- `bun install`
-   - `Cargo.lock` -- `cargo generate-lockfile`
-   - `poetry.lock` -- `poetry lock --no-update`
-   - `Gemfile.lock` -- `bundle install`
-   - `composer.lock` -- `composer install`
-   - Stage the regenerated lock file: `git add <lockfile>`
-4. Run the appropriate continue command:
-
-   | Context | Continue command |
-   | --- | --- |
-   | rebase | `git rebase --continue` |
-   | merge | `git commit --no-edit` |
-   | cherry-pick | `git cherry-pick --continue` |
-   | revert | `git revert --continue` |
-
-5. If more conflicts arise (rebase), loop back to Step 2
-6. When complete, report a summary: conflicts resolved (auto-resolved vs user-resolved), lock files regenerated, and rerere resolutions if any were applied (rerere is enabled globally and records/replays resolutions automatically)
-
-## After completion
-
-Assess how this skill performed:
-- If the user had to provide significant guidance, corrections, or workarounds to get the task done, recommend running `/improve-skill` to capture those learnings. Explain briefly what could be improved.
-- If the skill ran smoothly with minimal intervention, offer it as an option: "Would you like to run `/improve-skill` to refine this skill based on this session?"
+Report auto-resolved files, user-decided files, regenerated artifacts, tests, and remaining risk.

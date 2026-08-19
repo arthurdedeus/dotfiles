@@ -1,41 +1,30 @@
-# {Title} Technical Discovery
+# {Title}
 
-**Discovery Date**: {today's date in YYYY-MM-DD format}
-**Context**: {Brief description of what problem led to this exploration}
+- **Date:** {YYYY-MM-DD}
+- **Repository revision:** {commit or branch}
+- **Context:** {problem that led to the investigation}
 
 ## Summary
 
-{2-3 sentence overview of what was discovered and why it matters}
+{What was discovered and why it matters.}
 
-## Problem Context
+## Mechanism
 
-- **Original Issue**: {What you were trying to solve}
-- **Why This Was Complex**: {What made this non-obvious}
+{How the system produces the behavior.}
 
-## System Overview
+## Evidence
 
-{High-level architecture and data flow}
+- `{file:line}` — {verified fact}
+- `{command or test}` — {result}
 
-## Key Components
+## Practical use
 
-### {Component Name}
+{Checks, commands, configuration, or a small example needed to apply the finding.}
 
-- **Location**: {File path}
-- **Responsibility**: {What this component does}
-- **Gotchas**: {Non-obvious behaviors}
+## Limits and open questions
 
-## Code Examples
+- {Assumption or condition to recheck}
 
-```{language}
-// Context: {When/why you'd use this}
-```
+## References
 
-## Common Pitfalls
-
-1. **{Issue}**: {Description}
-   - **Symptom**: {How this manifests}
-   - **Solution**: {How to handle}
-
-## Related Resources
-
-- {Links to files, PRs, issues, documentation}
+- {Files, commits, pull requests, issues, or docs}

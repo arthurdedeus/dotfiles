@@ -1,17 +1,13 @@
 ---
 name: plan-day
-description: Use when Arthur wants to plan his day, do his daily standup setup, or "roll over" / "spill over" yesterday's daily note — creates today's daily note in the Obsidian vault, carrying unfinished tasks forward with a #spillover tag.
+description: Create today's Obsidian daily note and carry unfinished work forward with a #spillover tag.
 ---
 
-# Plan day
+# Plan the day
 
-Roll the most recent daily note forward into a new one for the current day: carry unfinished tasks over (tagged `#spillover`), fold the previous note's "For tomorrow" list into today's plan, and leave the old note as the record of that day.
+Daily notes live in `~/Documents/obsidian/PostHog/2 Areas/Daily notes/` as `YYYY-MM-DD.md`.
 
-Daily notes live in: `~/Documents/obsidian/PostHog/2 Areas/Daily notes/` named `YYYY-MM-DD.md`.
-
-## Template
-
-Every daily note uses exactly these three sections:
+Use this exact structure:
 
 ```markdown
 # PostHog
@@ -23,22 +19,17 @@ Every daily note uses exactly these three sections:
 
 ## Procedure
 
-1. **Find the target date.** Today's date is in context (`currentDate`). The new note is `<today>.md`. If it already exists, ask whether to overwrite before doing anything.
-2. **Find the source note.** The most recent existing note in the folder (highest date < today). `ls` the folder and pick it.
-3. **Read the source note.** Identify, per section:
-   - **Unfinished tasks** = any `- [ ]` line (and its indented sub-bullets). These carry over.
-   - **Completed tasks** = `- [x]`. These do NOT carry over — they stay as the day's record.
-   - **"For tomorrow" bullets** = plain `-` bullets under that heading. These become today's planned work.
-4. **Write the new note** using the template:
-   - Carry each unfinished `[ ]` item into the same section (PostHog → PostHog, Personal → Personal), appending ` #spillover` to the task line. Keep `#task` and `[[wikilinks]]` intact. Keep indented sub-bullets.
-   - Fold the source's **"For tomorrow"** bullets into the new **# PostHog** section as fresh `- [ ]` tasks. These are planned, not spilled over — do **not** tag them `#spillover`. Preserve any links/sub-bullets (e.g. metabase URLs).
-   - Leave the new **# For tomorrow** section empty (end-of-day capture).
-   - A section with nothing to carry stays empty (just its heading).
-5. **Leave the source note untouched.**
-6. **Report** the new plan back to Arthur grouped by section, noting which items are `#spillover`.
+1. Use the current date for the new filename.
+2. If today's note exists, read it and ask before replacing it.
+3. Find the latest older daily note.
+4. Read each section and its nested bullets.
+5. Copy each unfinished `- [ ]` task into the same section.
+6. Append `#spillover` to copied task lines. Preserve tags, links, and nested bullets.
+7. Convert plain bullets under `# For tomorrow` into unchecked PostHog tasks.
+8. Do not add `#spillover` to planned tasks from `# For tomorrow`.
+9. Leave today's `# For tomorrow` section empty.
+10. Leave the source note unchanged.
 
-## Notes
+Do not copy completed tasks. Do not invent or rewrite task text.
 
-- `#spillover` marks work pulled from a prior day; "For tomorrow" items were already planned, so they don't get the tag.
-- Don't invent or reword tasks — carry the exact text. The only edits are appending `#spillover` and converting "For tomorrow" bullets to `[ ]` checkboxes.
-- If Personal has no unfinished items, that's normal — leave it empty.
+Report today's PostHog and Personal tasks. Mark spilled tasks clearly.

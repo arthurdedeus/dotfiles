@@ -1,177 +1,122 @@
 ---
 name: customer-analytics-weekly-update
-description: Use when Arthur wants a weekly shipped-work update for the customer analytics product, summarizing his merged PostHog PRs for the week and drafting it to the customer-analytics Slack channel
+description: Draft Arthur's weekly customer analytics shipped-work update from merged PostHog pull requests.
 argument-hint: "[since-date] [until-date] [channel]"
 ---
 
-Build a "what shipped this week" update for the **customer analytics** product from Arthur's merged PostHog PRs (Monday through today), then draft it to Slack for him to send.
+# Customer analytics weekly update
 
-**Arguments:**
+Draft only. Never send the Slack message.
 
-- `<since-date>` — (optional) `YYYY-MM-DD` start of the window. Defaults to the **Monday of the current week**.
-- `<until-date>` — (optional) `YYYY-MM-DD` end of the window. Defaults to **today**.
-- `<channel>` — (optional) target Slack channel. Defaults to **#project-customer-analytics** (`C08GGECGJF4`).
+Defaults:
 
-The author is always `arthurdedeus` and the repo is always `PostHog/posthog`.
+- Window: Monday of the current week through today.
+- Repository: `PostHog/posthog`.
+- Author: `arthurdedeus`.
+- Channel: `#project-customer-analytics` (`C08GGECGJF4`).
 
-## Steps
+## 1. Compute the window
 
-### Step 1: Compute the date window
-
-The window MUST default to Monday-of-this-week through today. Do not eyeball it — compute it:
+Use supplied dates verbatim. Otherwise use a cross-platform date calculation:
 
 ```bash
-SINCE="${1:-$(date -v-mon +%Y-%m-%d)}"   # most recent Monday (today if it's Monday)
-UNTIL="${2:-$(date +%Y-%m-%d)}"          # today
-echo "window: $SINCE .. $UNTIL"
+python3 - <<'PY'
+from datetime import date, timedelta
+end = date.today()
+start = end - timedelta(days=end.weekday())
+print(start, end)
+PY
 ```
 
-`date -v-mon` is BSD/macOS syntax and resolves to the current week's Monday. If a `since-date` argument was passed, use it verbatim instead.
-
-### Step 2: Fetch the week's merged PRs (with bodies)
-
-One command pulls titles **and** bodies, so no follow-up fetches are needed:
+## 2. Fetch merged pull requests
 
 ```bash
 gh search prs \
   --author arthurdedeus \
   --repo PostHog/posthog \
   --merged \
-  "merged:$SINCE..$UNTIL" \
+  "merged:<since>..<until>" \
   --limit 50 \
-  --sort updated \
   --json number,title,url,closedAt,labels,body
 ```
 
-Notes:
-- `gh search prs` does **not** support a `mergedAt` JSON field — use `closedAt` (equal to merge time for merged PRs).
-- The `merged:$SINCE..$UNTIL` qualifier filters server-side, so the result is already scoped to the week.
+## 3. Curate
 
-### Step 3: Filter to customer analytics, then curate
+Keep customer analytics work with a user-visible, data-quality, or operational effect worth sharing.
 
-**Net (include candidates):** Keep PRs whose title carries a customer-analytics scope prefix — `feat(customer-analytics):`, `fix(customer-analytics):`, `refactor(customer-analytics):`, `chore(customer-analytics):`. This scope is the reliable signal. Also keep any PR clearly about the product (accounts list, account tabs, overview tiles, tags/Segments/Vitally, usage tab) even if the scope prefix is missing.
+Drop:
 
-**Then curate (drop the noise).** Not every scoped PR belongs in a team update. Apply judgment and DROP:
+- Flake and snapshot stabilization.
+- Internal refactors without an observable effect.
+- Dependency and CI chores.
+- Work for another product.
 
-| Drop | Why |
-|------|-----|
-| Flaky-test / snapshot stabilization (e.g. "stabilize flaky accounts row-expansion snapshots") | Not shippable work the team cares about |
-| Pure internal refactors with no user-visible effect (e.g. "collapse id/external_id into the name column tuple") | Invisible to the audience |
-| CI / chore / dependency bumps | Noise |
-| Anything outside customer analytics (revenue-analytics, hogql infra, stripe-mock, jokerhog, RFCs) | Different product |
+Show a trace with the window, candidate count, kept count, and drop reasons.
 
-When unsure whether something is worth highlighting, lean on the manual gold-standard example below: it kept features and data/consistency wins, and silently dropped test and plumbing PRs.
+## 4. Remove repeats
 
-Print a one-line trace so the user can see what was kept vs dropped:
+Read:
 
-```
-[ca-update] window 2026-06-01..2026-06-05 — 12 scoped PRs, kept 8, dropped 4 (2 test, 2 refactor)
-```
+`~/.claude/state/customer-analytics-weekly-update/last-update.md`
 
-### Step 4: Reconcile against the previous weekly update
+Drop capabilities already announced in the prior weekly update. Ad-hoc messages during the week do not count as the weekly record.
 
-This skill keeps a copy of the **last update it drafted** at:
+If the file is missing, inspect the latest weekly roundup in the channel.
 
-```
-~/.claude/state/customer-analytics-weekly-update/last-update.md
-```
+## 5. Add verified detail
 
-It lives outside the versioned skill directory on purpose — it holds internal team-update text that must never be committed to a dotfiles (or any) git repo.
+Use pull request bodies to extract:
 
-Before writing, read that file (if it exists) and drop any kept PR whose capability was **already announced in it**. The weekly roundup is the consolidated record, so anything that already appeared in a prior _weekly_ update is old news — don't repeat it.
+- The capability shipped.
+- Material caveats.
+- Follow-up work already stated.
+- People credited by the source.
 
-Two subtleties:
+Do not invent detail or mention feature-flag gating in the internal roundup.
 
-- **Ad-hoc Slack posts are not duplicates.** During the week Arthur often posts one-off "X is live!" heads-ups. Those are real-time pings, not the consolidated record, so rolling them into the weekly update is fine. Only skip items that were in a previous _weekly_ update (the file, or a prior "Update on what was shipped" post in the channel).
-- **Window overlap.** A weekly update posted on a Monday often sweeps in PRs merged that same afternoon. Those same PRs fall into the _next_ week's merge-date window, so without this reconciliation they'd be announced twice. The file is what catches that.
+## 6. Match requesters
 
-If the file is missing (first run, or it was cleared), fall back to the channel's most recent "Update on what was shipped" post — it surfaces in the Step 6 lookback read anyway — and reconcile against that.
+Read the channel from seven days before the report window through today.
 
-### Step 5: Mine PR bodies for detail
+Tag a requester only when they asked for the exact shipped capability.
 
-The value of the update is in the sub-bullets, which usually aren't in the title. Read each kept PR's `body` and pull out:
-- The user-facing capability (what someone can now do)
-- Caveats and "for now" notes (e.g. "Persisted in localStorage for now, will build persistent storage later")
-- Follow-ups the team should know (e.g. "will run a backfill to add the missing data")
-- People to credit — `cc @Name` — when the body or context implies collaboration
-- Whether screenshots exist (note `(screenshots)` so Arthur knows to attach them)
+- High confidence: include the resolved `<@USER_ID>` mention.
+- Lower confidence: list it separately in the preview.
+- Never infer a Slack identity from a display name.
 
-Do **not** invent detail. If the body is thin, keep the line to one sentence rather than padding it.
+## 7. Write the update
 
-### Step 6: Match requesters to the shipped work and tag them
+Use Arthur's terse, capability-first voice.
 
-Many of these features start as asks in the channel. Close the loop: when a kept item was explicitly requested, tag the requester so they know it shipped.
+- Group work by useful themes.
+- Use standard Markdown for the Slack draft tool.
+- Use `**bold**`, `-` bullets, and four-space nested bullets.
+- Use real `<@USER_ID>` mentions only when a notification is intended.
+- State caveats plainly.
+- Cut marketing language, LLM stock phrases, and em dashes.
 
-1. **Look back two weeks, not one.** Read #project-customer-analytics from `since-date − 7 days` through now (a requester usually asks a few days to a couple of weeks before the work lands). Use the Slack read tool with `oldest` set to that earlier timestamp.
-2. **Match each kept item to request messages.** A match is someone asking for that specific capability (e.g. "would be cool to have a 'My accounts' quick option", "I'd like to default the view to my accounts").
-3. **Resolve the requester's user id** from the message (or via `slack_search_users`) and tag them with a real mention `<@USER_ID>` on that feature's line — e.g. `Saved accounts table views (cc <@U08SX510NNR> <@U02QPCBLNAX>)`. A real ping is the point here, so use `<@…>`, not plain-text `cc @Name`.
-4. **Confidence gate:**
-   - **High confidence** (they asked for that exact capability): include the tag in the draft.
-   - **Low confidence** (adjacent or partial — they asked for something related but not the same thing): do **not** auto-tag. Surface it in the preview as "possible tag, your call" and let Arthur decide.
-5. **Skip already-announced / already-credited.** If an item was dropped in Step 4 (already in a prior weekly update), there's nothing to tag. If you already tagged a requester for that exact item in an ad-hoc post during the week, re-tagging in the roundup is optional reinforcement — note it rather than assuming it's wanted.
+Do not add screenshot placeholders.
 
-In the Step 8 preview, list the high-confidence tags inline and the low-confidence ones separately for approval.
+## 8. Preview and draft
 
-### Step 7: Group thematically and write the update
+Show:
 
-Group the kept PRs into a few themed sections. The natural groups (from past updates) are **Features** and **Data consistency**, but let the actual work drive the headers — add or rename sections if the week's content calls for it. Within a section, lead each item with the capability name, then indent sub-bullets for detail.
+1. The kept and dropped trace.
+2. Included pull request links.
+3. The full rendered update.
+4. Included requester tags.
+5. Possible low-confidence tags.
 
-**Tone — match Arthur's voice exactly:**
-- Terse, telegraphic, capability-first. Fragments are fine. No marketing prose, no "I'm excited to share".
-- Casual and concrete. Reference real surfaces and links (`/organization/billing/usage`), inline `:thread:` pointers, `(more in :thread:)`, `(screenshots)`, `cc @Person`.
-- Honest about state: surface the "for now" / "still figuring out" / "will run a backfill" caveats rather than hiding them.
-- **Don't mention feature-flag gating** (e.g. "gated by `customer-analytics-csp`", "with the flag on"). These updates are internal and the flags are enabled for everyone, so describe the behavior as shipped, not as conditional. Drop the flag from PR bodies when you mine them.
-- **No em-dashes.** Arthur never writes `—`. Where you'd reach for one, end the sentence with a period and start a new one, or use a comma. e.g. "Missing links show disabled. You can fill them in inline" — NOT "...show disabled — and you can...".
-- **No LLM tells or jargon.** Avoid the giveaways: em-dashes, "you can now", "seamless(ly)", "leverage", "robust", "powerful", "unlock", "delve", and "no more X" clichés. Name UI by what the user sees ("edit button", not "gear button"). Write plainly and concretely like the example below.
+Wait for approval. Then create a Slack draft in the resolved channel with the available Slack tool.
 
-## Message formatting (write STANDARD markdown — the Slack MCP converts it)
+Never send it. Arthur sends the draft.
 
-The update is delivered through the Slack MCP (`slack_send_message_draft`), which accepts **standard markdown** and renders it natively in Slack — including real nested bullet lists. Write plain markdown; do NOT write Slack mrkdwn (`*single asterisks*`, literal `•`/`◦` glyphs) — that was the source of the earlier paste/formatting problems.
+After draft creation, save the exact update text to:
 
-- **Bold:** double asterisks `**like this**` (title line and section headers).
-- **Italic:** `_like this_`.
-- **Bullets:** `- ` at the line start.
-- **Nested sub-bullets:** indent **four spaces** then `- `. The MCP renders a true nested list (Slack shows `•`, then `◦` for the child level).
-- **Links:** `[label](https://url)` or a bare URL.
-- **Mentions:** `cc @Name` passes through as plain text — it does NOT ping. To actually notify someone, resolve their ID with `slack_search_users` and use `<@USER_ID>`. Default to plain text unless Arthur asks for a real ping. _Exception:_ requester tags from Step 6 should be real `<@USER_ID>` mentions — the whole point is to notify the person who asked.
-- Keep emoji minimal — only `:thread:` / `:ship:`-style markers if they add meaning. Don't decorate.
+`~/.claude/state/customer-analytics-weekly-update/last-update.md`
 
-## Gold-standard example (Arthur's own update — standard markdown)
+## Optional visual proof
 
-Mirror this structure, density, and voice:
+If Arthur asks for visuals, use `ui-testing-proof`. Record read-only production walkthroughs and avoid customer mutations.
 
-```markdown
-**Update on what was shipped this week:**
-
-**Features**
-- Accounts list supports displaying fields from arbitrary views (more in :thread:)
-- Customizable overview tiles in accounts list
-    - Persisted in localStorage for now, will build persistent storage along with saving multiple views
-    - Useful links section (mentioned above). Will run a backfill to add the missing data
-- Account users tab
-    - Showing all active users from a given account, hyperlinked to their person profile
-- Usage tab (cc @Phil DelGobbo)
-    - Reproduction of the graph from /organization/billing/usage, showing per-product usage over time (screenshots)
-    - URL-persisted state, so sharing your view's link reproduces it for whoever opens it
-
-**Data consistency**
-- Migrated the managed accounts (either by csm or ae) over to the product. Still figuring out the best way to pipe this data in automatically
-- Tags column shows Segments from Vitally and is filterable
-```
-
-### Step 8: Preview, then draft to Slack
-
-1. Show Arthur the full update **rendered** in chat, preceded by the kept/dropped trace from Step 3 and the list of included PR numbers + URLs, so he can spot-check coverage. Include the high-confidence requester tags inline and any low-confidence tags separately for his call (Step 6).
-2. Ask him to approve or adjust. **Do not draft or send anything yet.**
-3. On approval, create a Slack **draft** in **#project-customer-analytics** (`C08GGECGJF4`) via `slack_send_message_draft`, passing the update as standard markdown. Return the channel link so Arthur does the final send from Slack himself.
-   - If a `<channel>` argument was given, resolve its ID with `slack_search_channels` first and draft there instead.
-   - If the call returns `draft_already_exists`, tell Arthur to delete the existing draft for that channel in Slack, then retry. Do not work around it.
-4. After the draft is created, save the drafted update text to `~/.claude/state/customer-analytics-weekly-update/last-update.md` (create the directory if needed, overwrite the previous contents). This is what next week's Step 4 reconciles against, so it stops the next update from repeating this week's news. Save the update text itself, not a link.
-
-This skill **only drafts — it never sends.** Arthur presses Send in Slack. Do not claim work that isn't backed by a merged PR in the window.
-
-## After completion
-
-Assess how this skill performed:
-- If the user had to correct the filtering, the grouping, the tone, or the Slack formatting, recommend running `/improve-skill` to capture the fix.
-- If it ran smoothly, offer it: "Would you like to run `/improve-skill` to refine this skill based on this session?"
+Cover every highlighted surface or report the missing item. Flag visible customer data before sharing any artifact.

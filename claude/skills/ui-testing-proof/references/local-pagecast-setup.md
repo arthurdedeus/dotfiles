@@ -1,111 +1,63 @@
 # Local Pagecast setup
 
-This machine uses a patched Pagecast build because the published npm `0.2.1` package does not contain the cursor-overlay implementation advertised by the repository, and the repository implementation originally lost its overlay after navigation.
+Use the installed patched Pagecast build. Do not replace it with the published package without revalidating cursor and redaction behavior.
 
-## Installed components
+## Installed paths
 
-- Patched source: `~/.pi/agent/tools/pagecast-patched`
-- Patch branch: `local/cursor-reinjection`
-- Patch commits:
-  - `8a26c71` — re-inject overlay after navigation and redact sensitive typed values
-  - `bf0ef9d` — explicitly position the DOM cursor for every target interaction
-- Persistent MCP controller: `~/.pi/agent/tools/pagecast-controller.mjs`
-- Controller socket: `~/.pi/agent/pagecast-controller.sock`
-- Controller log: `~/.pi/agent/pagecast-controller.log`
-- Recording output: `~/Desktop/Pagecast`
+- Source: `~/.pi/agent/tools/pagecast-patched`
+- Controller: `~/.pi/agent/tools/pagecast-controller.mjs`
+- Socket: `~/.pi/agent/pagecast-controller.sock`
+- Log: `~/.pi/agent/pagecast-controller.log`
+- Output: `~/Desktop/Pagecast`
 - Pi MCP config: `~/.pi/agent/mcp.json`
-- Node: `/opt/homebrew/bin/node`
-- ffmpeg/ffprobe: Homebrew binaries under `/opt/homebrew/bin`
 
-The controller allows a local agent session that did not load Pagecast at startup to keep one Pagecast MCP process and authenticated browser context alive across shell calls.
+The patch restores the visible cursor after navigation and redacts sensitive typed values from tool output and timelines.
 
-## Start and call the controller
+## Controller
 
-Resolve these paths relative to this skill directory:
+From the skill directory:
 
 ```bash
 ./scripts/pagecast-controller-start.sh
 ./scripts/pagecast-call.py --health
 ```
 
-Start a headed recording:
+Use `record_page`, `interact_page`, and `stop_recording` through `pagecast-call.py`. Keep the exact session ID.
 
-```bash
-./scripts/pagecast-call.py record_page '{
-  "url": "https://example.com",
-  "platform": "github"
-}'
-```
+Do not kill the controller while a recording is finalizing.
 
-Retain the exact session ID returned by `record_page`.
+## Direct MCP
 
-Interact:
+When Pagecast is configured in the current Pi session, discover and call it through the generic MCP proxy.
 
-```bash
-./scripts/pagecast-call.py interact_page '{
-  "sessionId": "SESSION_ID",
-  "actions": [
-    {"type": "waitForSelector", "selector": "button[data-testid=save]"},
-    {"type": "hover", "selector": "button[data-testid=save]"},
-    {"type": "click", "selector": "button[data-testid=save]"},
-    {"type": "wait", "ms": 1500}
-  ]
-}'
-```
+Keep Pagecast tools deferred instead of loading every schema into context.
 
-Stop and finalize:
+## Authentication
 
-```bash
-./scripts/pagecast-call.py stop_recording '{"sessionId":"SESSION_ID"}'
-```
+Pagecast uses an isolated browser context and does not share local Chrome cookies.
 
-The controller allows up to 15 minutes for long finalization/export requests. Do not kill it while `stop_recording` is flushing a large WebM.
+1. Open the protected page in Pagecast.
+2. Ask the user to complete protected authentication.
+3. Keep the same session alive.
+4. Trim authentication from final media when needed.
 
-## Direct MCP usage
+Stopping the recording closes the browser context.
 
-In a new Pi session, Pagecast can be discovered through the generic `mcp` proxy. Search for `pagecast record`, connect the `pagecast` server, then call the discovered Pagecast tools. Keep `directTools: false` to avoid placing every schema in context.
+Never automate personal passwords, MFA, consent, or ambiguous account selection. Video may still contain visible account data.
 
-## Authentication limitation
+## Cursor checks
 
-Pagecast creates an isolated Playwright browser context. It does not share Browser Use's Chrome cookies.
+Pagecast records a DOM cursor, not the native OS pointer.
 
-For protected apps:
+If the cursor is missing:
 
-1. Call `record_page` on the protected URL.
-2. Ask the user to complete SSO/password/MFA manually in the visible Pagecast window.
-3. Keep the same Pagecast `sessionId` alive.
-4. Perform the test scenario.
-5. Trim the authentication portion during export if needed.
-
-Stopping the recording closes that context and discards its session cookies. A subsequent recording requires authentication again.
-
-Never automate personal passwords, MFA, consent, or ambiguous account selection. Test credentials may be entered only when the user has authorized their use. The patched recorder redacts password/secret fields from MCP output and timeline JSON, but the browser video can still contain visible email addresses and other account data.
-
-## Cursor behavior
-
-Playwright video does not capture the native OS pointer. Pagecast supplies a red DOM cursor and click ripple. The local patch:
-
-- Re-injects the overlay after `DOMContentLoaded` and before every action.
-- Restores the cursor if an SPA replaces body contents.
-- Explicitly sets cursor coordinates from each target bounding box.
-- Uses the maximum practical z-index and Pagecast's overlay styling.
-
-The patch was validated after a hard navigation on a page that blocked synthetic `mousemove`; the final frame contained the expected red cursor at the target.
-
-If a video has no cursor:
-
-1. Confirm MCP is using `~/.pi/agent/tools/pagecast-patched/src/index.js`, not `/opt/homebrew/bin/pagecast` or `npx @mcpware/pagecast@0.2.1`.
-2. Confirm interactions went through `interact_page`; manual user movement is not represented by Pagecast's synthetic cursor.
-3. Confirm the interaction had a selector/bounding box, or use coordinate hover before an action.
-4. Validate the finalized video, not an unflushed live `page@*.webm` copy.
+1. Confirm MCP uses the patched source path.
+2. Confirm actions ran through `interact_page`.
+3. Confirm each target had a selector or bounding box.
+4. Inspect finalized media, not a growing WebM file.
 
 ## Artifact delivery
 
-PostHog's `upload_artifact` tool is enabled only for cloud task runs with task and run IDs. When available:
+Cloud tasks may provide `upload_artifact`. Copy files into the session workspace and use the correct MIME type.
 
-- Copy deliverables into the session workspace.
-- Keep each file under 30 MB.
-- Upload MP4 with `video/mp4`, GIF with `image/gif`, PNG with `image/png`.
-- Reference the returned artifact URL.
-
-In local scratch sessions, artifact upload is unavailable. Do not pretend a local Markdown path is downloadable. State the limitation and open/copy the local file only if the user asks.
+Local scratch sessions may not support upload. In that case, report the local path and do not imply it is downloadable.
