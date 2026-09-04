@@ -130,18 +130,18 @@
       "Bash(curl -s -m 5 \"http://localhost:8123/?query=SELECT+1\")"
     ],
     "deny": [],
-    "defaultMode": "plan",
+    "defaultMode": "auto",
     "additionalDirectories": [
       "/Users/arthur/.claude/bin/review-code",
       "/Users/arthur/.claude"
     ]
   },
-  "model": "opus[1m]",
   "enabledPlugins": {
     "superpowers@claude-plugins-official": true,
     "autoresearch@autoresearch": true,
     "vercel@claude-plugins-official": true,
-    "ponytail@ponytail": true
+    "ponytail@ponytail": true,
+    "slack@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
     "autoresearch": {
@@ -155,14 +155,21 @@
         "source": "git",
         "url": "https://github.com/DietrichGebert/ponytail.git"
       }
+    },
+    "interfaces": {
+      "source": {
+        "source": "github",
+        "repo": "jakubkrehel/skills"
+      }
     }
   },
   "alwaysThinkingEnabled": true,
-  "effortLevel": "xhigh",
+  "effortLevel": "high",
   "tui": "fullscreen",
   "theme": "dark-ansi",
   "editorMode": "vim",
   "preferredNotifChannel": "terminal_bell",
+  "agentPushNotifEnabled": true,
   "skipAutoPermissionPrompt": true,
   "voiceEnabled": true,
   "feedbackSurveyState": {

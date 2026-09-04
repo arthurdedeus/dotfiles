@@ -15,12 +15,9 @@ SYMLINKS=(
 
   # claude
   "claude/CLAUDE.md:$HOME/.claude/CLAUDE.md"
-  "claude/disagreement-and-calibration.md:$HOME/.claude/disagreement-and-calibration.md"
+  "claude/AGENTS.md:$HOME/.pi/agent/AGENTS.md"
   "claude/settings.json:$HOME/.claude/settings.json"
   "claude/skills:$HOME/.claude/skills"
-  "claude/skills/ui-testing-proof:$HOME/.agents/skills/ui-testing-proof"
-  "claude/skills/scoping-additive-feature-work:$HOME/.agents/skills/scoping-additive-feature-work"
-  "claude/skills/implementing-additive-feature-work:$HOME/.agents/skills/implementing-additive-feature-work"
   "claude/knowledge:$HOME/.claude/knowledge"
   "claude/agents:$HOME/.claude/agents"
   "claude/plans:$HOME/.claude/plans"

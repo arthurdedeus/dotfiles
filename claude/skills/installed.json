@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "installed": {
+    "caveman": {
+      "repo": "juliusbrussee/caveman"
+    },
+    "context-budget": {
+      "repo": "affaan-m/ecc"
+    }
+  }
+}

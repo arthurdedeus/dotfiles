@@ -42,7 +42,9 @@ gh search prs \
 
 ## 3. Curate
 
-Keep customer analytics work with a user-visible, data-quality, or operational effect worth sharing.
+The audience is CSMs, TAMs, sales, and support. Not engineers.
+
+Keep work a GTM reader can notice: something they can now see, click, or rely on.
 
 Drop:
 
@@ -50,6 +52,12 @@ Drop:
 - Internal refactors without an observable effect.
 - Dependency and CI chores.
 - Work for another product.
+- Reliability, telemetry, and instrumentation work with no visible surface. Fold it into the visible bullet it supports, or cut it.
+- Sync and pipeline repair work, even when a named person was blocked by the failure. A status
+  field that now reports the truth is not a capability.
+- Fixes to internal tooling and settings cleanup that no reader in the channel uses.
+
+Landing four themes a reader acts on beats landing nine they scroll past.
 
 Show a trace with the window, candidate count, kept count, and drop reasons.
 
@@ -68,32 +76,71 @@ If the file is missing, inspect the latest weekly roundup in the channel.
 Use pull request bodies to extract:
 
 - The capability shipped.
-- Material caveats.
+- Caveats that change what a reader should do.
 - Follow-up work already stated.
 - People credited by the source.
 
 Do not invent detail or mention feature-flag gating in the internal roundup.
 
+Leave out mechanism. A PR body explains how a thing works because a reviewer needs that. This
+reader does not. Cut region splits, transports, schedule times, ID matching, access checks,
+debouncing, retries, phase counts, and workflow topology.
+
+Keep a caveat only when a reader would do something different knowing it. "Gong summaries are
+not included" is a limit on what they will find and can go. "The global schedule starts paused"
+is an operator detail and cannot.
+
 ## 6. Match requesters
 
 Read the channel from seven days before the report window through today.
 
-Tag a requester only when they asked for the exact shipped capability.
+Tag everyone with a stake in the shipped capability, not only the person who phrased it best.
 
-- High confidence: include the resolved `<@USER_ID>` mention.
-- Lower confidence: list it separately in the preview.
+Tag when someone:
+
+- Asked for the capability.
+- Asked for an adjacent slice of it.
+- Reported the bug or gap it closes.
+- Sent a customer or a thread that motivated it.
+
+Under-tagging is the common failure. A theme with one tag usually means the channel was not
+read closely enough. Several tags on one theme is normal and correct.
+
+- Resolve every mention to a real `<@USER_ID>`.
 - Never infer a Slack identity from a display name.
+- List genuinely uncertain matches separately in the preview instead of dropping them silently.
+- Ask Arthur for tags on any theme the channel gave no requester for. He tracks stakeholders from
+  DMs and other channels that this read cannot see.
 
 ## 7. Write the update
 
 Use Arthur's terse, capability-first voice.
 
-- Group work by useful themes.
+Structure: one message. A short intro line, then the themes separated by blank lines. Do not
+split the update across several messages, and do not put `---` separators between themes.
+
+Per theme:
+
+- Bold theme name, then the requester tags on the same line.
+- One line naming the capability.
+- At most three nested bullets under it. Two levels of nesting, never three.
+- Cut a bullet a GTM reader cannot act on.
+- Prefix a theme with `[WIP]` when the surface shipped unfinished.
+- For a permission or guardrail change, name the control the reader now sees, not the
+  consequence. "A delete confirmation modal was added" beats "deleting removes stored values
+  permanently".
+- Say `hard-delete` when the record is destroyed, so it reads apart from ending or unassigning.
+
+Add a PS with the next action when a feature needs the reader to set something up.
+
 - Use standard Markdown for the Slack draft tool.
 - Use `**bold**`, `-` bullets, and four-space nested bullets.
 - Use real `<@USER_ID>` mentions only when a notification is intended.
-- State caveats plainly.
 - Cut marketing language, LLM stock phrases, and em dashes.
+
+Name the capability, do not sell it. "Decide which accounts stay tracked" beats "Which accounts
+stay tracked is now decided in Customer analytics, not Vitally". Drop comparisons to the tool
+being replaced, and drop claims about how much better a surface now is.
 
 Do not add screenshot placeholders.
 
@@ -108,6 +155,10 @@ Show:
 5. Possible low-confidence tags.
 
 Wait for approval. Then create a Slack draft in the resolved channel with the available Slack tool.
+
+Slack allows one attached draft per channel, and the update is one message, so the draft is the
+message. The Slack tool cannot delete or edit a draft, so redrafting leaves the earlier draft in
+place. Confirm the text before drafting, and say which draft ID is current.
 
 Never send it. Arthur sends the draft.
 

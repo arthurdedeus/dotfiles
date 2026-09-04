@@ -169,3 +169,10 @@ This does not override the `# Code comments` rules in this file. Those decide *w
 - Be terse in commit messages.
 - When writing guides or plan docs, write them to .claude/plans/{org}/{repo}/ (org: posthog or personal).
 - When I tell you to test it yourself or test in browser, you should use Claude in Chrome MCP to open the app in the browser.
+
+# Pull requests and merging
+
+- Never submit a pull request to Trunk or any other merge queue without a separate, explicit confirmation that names the merge queue and the specific pull request.
+- Treat phrases such as "ship it", "land it", "merge it", or "make it ready" as insufficient permission to enqueue a pull request.
+- Opening a pull request, marking it ready for review, or fixing its checks does not grant permission to enqueue or merge it.
+- Before running `/trunk merge`, enabling auto-merge, or issuing any equivalent merge command, ask: "Do you want me to submit PR #<number> to the Trunk merge queue?" Wait for an affirmative response.
