@@ -59,8 +59,12 @@ Otherwise:
 1. Generate the body with `pr-description`.
 2. Follow the repository's current title and draft rules.
 3. Open a draft when the repository defaults to drafts.
-4. Set labels and assignee only when repository rules or the user require them.
-5. Return the pull request URL.
+4. After opening a draft, post this pull request comment exactly:
+
+   > Game on, robots! @veria-ai @greptile-apps @parameterai
+
+5. Set labels and assignee only when repository rules or the user require them.
+6. Return the pull request URL.
 
 ## 7. Optional babysitting
 

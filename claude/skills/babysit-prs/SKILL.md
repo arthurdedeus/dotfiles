@@ -57,9 +57,20 @@ If the branch is behind or conflicting:
 
 Refresh the head SHA after any update.
 
-### 3. Triage review threads
+### 3. Inspect CI and review threads in parallel
 
-Read threads through GraphQL `reviewThreads`. REST review comments do not expose resolution state.
+Use `launch-subagents` to start two read-only Terra agents at the same time. Give both agents the exact repository path, pull request number, and head SHA.
+
+- **Review agent:** read GraphQL `reviewThreads` and classify every unresolved, current thread.
+- **CI agent:** read checks, investigate failed required checks, and classify likely flakes versus genuine failures.
+- Tell both agents not to edit files, change Git state, post comments, resolve threads, rerun checks, or push.
+- After both finish, refresh the head SHA. If it changed, discard both reports and inspect the new SHA again.
+
+If subagents cannot run, perform both inspections sequentially before making changes.
+
+### 4. Triage review threads
+
+Use the review inspection report, then refresh each thread through GraphQL `reviewThreads` before acting. REST review comments do not expose resolution state.
 
 Skip resolved and outdated threads.
 
@@ -73,9 +84,9 @@ For each open thread:
 
 Reply before resolving. Never resolve a thread without addressing it.
 
-### 4. Fix CI
+### 5. Fix CI
 
-Read current checks with:
+Use the CI inspection report, then refresh current checks before acting:
 
 ```bash
 gh pr checks <number> --json name,state,bucket,link
@@ -90,7 +101,7 @@ For each failed required check:
 
 A flaky red check still blocks merge-readiness.
 
-### 5. Request Stamphog approval
+### 6. Request Stamphog approval
 
 Skip with `--no-stamphog`.
 
@@ -105,7 +116,7 @@ Add the `stamphog` label only when:
 
 Do not wait for Stamphog approval. Handle any new threads in the next pass.
 
-### 6. Push
+### 7. Push
 
 - Use Graphite submission for a tracked stack.
 - Use `git push` for an ordinary branch.
@@ -113,7 +124,7 @@ Do not wait for Stamphog approval. Handle any new threads in the next pass.
 
 Do not install missing tools without asking.
 
-### 7. Continue or stop
+### 8. Continue or stop
 
 Re-read checks, threads, and merge state.
 
