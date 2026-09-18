@@ -43,7 +43,7 @@ link_config "$DOTFILES_DIR/pi/mcp-servers" "$HOME/.pi/agent/mcp-servers"
 if ! command -v uv >/dev/null 2>&1; then
   curl -LsSf https://astral.sh/uv/install.sh | sh
 fi
-"$HOME/.local/bin/uv" tool install --force "browser-use==0.1.9"
+"$HOME/.local/bin/uv" tool install --force "browser-use==0.13.8"
 
 npm --prefix "$DOTFILES_DIR/pi/mcp-servers/pagecast-patched" install --omit=optional --ignore-scripts
 pi --version
