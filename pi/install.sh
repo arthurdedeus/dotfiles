@@ -45,5 +45,5 @@ if ! command -v uv >/dev/null 2>&1; then
 fi
 "$HOME/.local/bin/uv" tool install --force "browser-use==0.13.8"
 
-npm --prefix "$DOTFILES_DIR/pi/mcp-servers/pagecast-patched" install --omit=optional --ignore-scripts
+npm --prefix "$DOTFILES_DIR/pi/mcp-servers/pagecast-patched" ci --omit=optional --ignore-scripts
 pi --version
