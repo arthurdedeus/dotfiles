@@ -1,0 +1,50 @@
+{
+  "mcpServers": {
+    "browser-use": {
+      "command": "browser-use",
+      "args": [
+        "--cli-mcp"
+      ],
+      "lifecycle": "lazy",
+      "directTools": false,
+      "requestTimeoutMs": 120000,
+      "description": "Control the local Chrome browser through Browser Use"
+    },
+    "pagecast": {
+      "command": "node",
+      "args": [
+        "src/index.js"
+      ],
+      "env": {
+        "RECORDING_OUTPUT_DIR": "${HOME}/Pagecast"
+      },
+      "lifecycle": "lazy",
+      "directTools": false,
+      "requestTimeoutMs": 120000,
+      "description": "Record polished browser demos as WebM, GIF, or MP4",
+      "cwd": "~/.pi/agent/mcp-servers/pagecast-patched"
+    },
+    "posthog": {
+      "url": "https://mcp.posthog.com/mcp",
+      "auth": "oauth",
+      "lifecycle": "lazy",
+      "directTools": true,
+      "requestTimeoutMs": 120000
+    },
+    "slack": {
+      "url": "https://mcp.slack.com/mcp",
+      "auth": "oauth",
+      "oauth": {
+        "clientId": "1601185624273.8899143856786",
+        "redirectUri": "http://localhost:3118/callback"
+      },
+      "lifecycle": "lazy",
+      "directTools": false,
+      "approveTools": [
+        "*send_message*",
+        "*schedule_message*"
+      ],
+      "requestTimeoutMs": 120000
+    }
+  }
+}
