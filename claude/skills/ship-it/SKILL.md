@@ -61,10 +61,14 @@ Otherwise:
 3. Open a draft when the repository defaults to drafts.
 4. After opening a draft, post this pull request comment exactly:
 
-   > Game on, robots! @veria-ai @greptile-apps @parameterai
+   > Game on, robots! @greptile-apps @parameterai
 
-5. Set labels and assignee only when repository rules or the user require them.
-6. Return the pull request URL.
+5. Post a separate pull request comment exactly:
+
+   > @posthog review
+
+6. Set labels and assignee only when repository rules or the user require them.
+7. Return the pull request URL.
 
 ## 7. Optional babysitting
 
